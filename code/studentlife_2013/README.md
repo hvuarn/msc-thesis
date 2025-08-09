@@ -1,6 +1,6 @@
-# R code – StudentLife 2013: activity data
+# StudentLife 2013
 
-This folder contains R code for preprocessing and preparing the StudentLife `activity` sensing data for further analysis.
+This folder contains all R scripts for the preprocessing to investiage the relationship between passively sensed behaviors (active minutes, conversation duration, and phone lock duration) and depression (PHQ-9) in the StudentLife 2013 dataset.
 
 ---
 
@@ -12,7 +12,6 @@ Loads raw activity data (CSV per user), removes duplicated rows and timestamps, 
 **Output:**  
 - `activity_clean.csv`  
 - `activity_clean.rds`  
-
 
 ## `02_activity_daily_minutes.R`
 
@@ -33,42 +32,17 @@ Also prepares the data for GHCM input format and generates plots.
 - `activity_daily_long.csv` / `.rds`  
 - Plots (`plot_01.pdf`, `plot_02.pdf`, `plot_03.pdf`) in `data/preprocessed/sensing/activity/plots`
 
--
 
-## How to run
+## Execution order
 
-It’s recommended to open the project in RStudio and run the scripts from there  
-to ensure relative paths work correctly and outputs are saved to the correct folder.
+Please run the scripts in the following order to ensure all data dependencies are met.
 
-### Option 1: via RStudio Project (recommended)
-1. Open `msc-thesis.Rproj` in RStudio (root folder)
-2. Open e.g. `Rcode/01_activity_cleaning.R` or `Rcode/02_activity_daily_minutes.R`
-3. Run the full script
-
-### Option 2: from console
-You can also run the scripts using:
-
-```r
-source("Rcode/01_activity_cleaning.R")
-source("Rcode/02_activity_daily_minutes.R")
-
-
-
-
-recommended: run via RStudio project
-to ensure relative paths and project structure work correctly:
-
-▶ open the R project:
-  - open `msc-thesis-public.Rproj` in RStudio (located in the root folder)
-
-▶ run the cleaning script:
-  - open `rcode/01_activity_cleaning.R` inside the project
-  - run the full script
-
-▶ outputs will be saved as:
-  - data/preprocessed/sensing/activity/activity_clean.csv
-  - data/preprocessed/sensing/activity/activity_clean.rds
-
-this will generate the cleaned activity dataset from raw studentlife files
-
+1.  **`00_phq9.R`**: Cleans and performs exploratory analysis on the PHQ-9 survey data.
+2.  **`01_activity_cleaning.R`**: Cleans and preps the raw activity sensing data.
+3.  **`02_activity_daily_minutes.R`**: Cleans and normalized the daily activity data for GHCM input.
+4.  **`03_joint_overview.R`**: Joins all preprocessed datasets. 
+5.  **`04_ghcm.R`**: Rund the GHCM test controlling for baseline depression (scalar) (Analysis 1).
+6.  **`05_convo.Rmd`**: Cleans and prepares the conversation duration data.
+7.  **`06_phonelock.Rmd`**: Cleans and prepares the phone lock duration data.
+7.  **`07_ghcm.Rmd`**: Runs the full GHCM test with functional covariates (Anaylsis 2). 
 
