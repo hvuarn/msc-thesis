@@ -51,24 +51,11 @@ We refer to the datasets as StudentLife 2013 and StudentLife 2017–2022, respec
         └── ... (raw files from StudentLife 2017-2022)
     ```
 
-
-recommended: run via RStudio project
-to ensure relative paths and project structure work correctly:
-
-▶ open the R project:
+3. **Run the scripts:**  
+   The scripts are designed to be run in sequence, and they will automatically read the data from the specified folders.  
+   You can run them either via RStudio or from the R console.
+   ▶ open the R project:
   - open `msc-thesis-public.Rproj` in RStudio (located in the root folder)
-
-▶ run the cleaning script:
-  - open `rcode/01_activity_cleaning.R` inside the project
-  - run the full script
-
-▶ outputs will be saved as:
-  - data/preprocessed/sensing/activity/activity_clean.csv
-  - data/preprocessed/sensing/activity/activity_clean.rds
-
-this will generate the cleaned activity dataset from raw studentlife files
-
-
 
 
 
