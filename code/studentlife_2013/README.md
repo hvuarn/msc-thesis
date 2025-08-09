@@ -12,10 +12,10 @@ Please run the scripts in the following order to ensure all data dependencies ar
 2.  **`01_activity_cleaning.R`**: Cleans and preps the raw activity sensing data.
 3.  **`02_activity_daily_minutes.R`**: Cleans and normalized the daily activity data for GHCM input.
 4.  **`03_joint_overview.R`**: Joins all preprocessed datasets. 
-5.  **`04_ghcm.R`**: Rund the GHCM test controlling for baseline depression (scalar) (Analysis 1).
+5.  **`04_ghcm.R`**: Runs the baseline GHCM test, controlling only for baseline depression (Analysis 1).
 6.  **`05_convo.Rmd`**: Cleans and prepares the conversation duration data.
 7.  **`06_phonelock.Rmd`**: Cleans and prepares the phone lock duration data.
-7.  **`07_ghcm.Rmd`**: Runs the full GHCM test with functional covariates (Anaylsis 2). 
+8.  **`07_ghcm.Rmd`**: Runs the full GHCM test, controlling for additional functional covariates (Anaylsis 2).
 
 
 ## Some high level details: 
