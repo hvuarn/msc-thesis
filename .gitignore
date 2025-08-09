@@ -1,3 +1,7 @@
+# Ignore the data folder
+data/
+
+# Ignore RStudio user-specific files
 .Rproj.user
 .Rhistory
 .RData
