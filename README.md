@@ -45,7 +45,7 @@ The raw datasets are **publicly available** but **not included** in this reposit
         └── ... (raw files from StudentLife 2017-2022)
     ```
 
-3.	**Run the scripts:** To reproduce the analysis:
+3.	**Run the scripts:** To reproduce the analysis. blablablablablablablalba blabalbalba: 
     * Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
     * Run the scripts in sequence.
 
