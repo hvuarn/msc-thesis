@@ -3,7 +3,7 @@
 This analysis investigates the relationship between daily step counts and mental health (PHQ-4) over a longer period.
 
 ---
-### **Execution Order**
+### **Execution order**
 Please run the scripts in the following order to ensure all data dependencies are met.
 
 1.  **`01_steps.Rmd`**: Cleans and normalizes daily steps data. 
