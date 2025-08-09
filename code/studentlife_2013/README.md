@@ -20,16 +20,14 @@ Please run the scripts in the following order to ensure all data dependencies ar
 
 ## Some high level details: 
 
-### `01_activity_cleaning.R`
 
-1. **Purpose:**
-		* Loads raw activity data (CSV per user), removes duplicated rows and timestamps, and saves a clean, unified dataset.
+1. **`01_activity_cleaning.R`:** Loads raw activity data (CSV per user), removes duplicated rows and timestamps, and saves a clean, unified dataset.
 
 **Output:**  
 - `activity_clean.csv`  
 - `activity_clean.rds`  
 
-### `02_activity_daily_minutes.R`
+2. **`02_activity_daily_minutes.R`:** 
 
 **Purpose:**  
 Implements threshold-based aggregation (Wang et al., 2014) to compute **daily activity duration**.  
