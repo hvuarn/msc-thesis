@@ -5,7 +5,7 @@ The code analysis is divided into two main parts for the publicly available data
 
 Of the three *StudentLife* studies, we use the two publicly available datasets:  
 - the original *StudentLife* study ([Wang et al., 2014](#references)), referred to as **StudentLife 2013**  
-- the *College Experience Study* ([Nepal et al., 2024](#references)), referred to as **StudentLife 2017–2022**  
+- the *College Experience Study* ([Nepal et al., 2024](#references)), referred to as **StudentLife 2017–2022**
 
 
 ## Abstract
