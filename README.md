@@ -8,20 +8,17 @@ This repository contains the R code for **data preprocessing, analysis, and visu
 
 
 ## Abstract
-Mobile sensing has become increasingly popular for studying depression with objective, real-world data. However, much of the existing literature only reports 
-marginal associations without controlling for measured confounding. This thesis addresses this gap by testing whether passively sensed physical 
-activity influences follow-up depression after controlling for baseline depression and other relevant covariates.
+Mobile sensing has become increasingly popular for studying depression with objective, real-world data. However, much of the existing literature focuses on marginal associations without controlling for measured confounding. This thesis addresses that gap by testing whether passively sensed **physical activity** influences follow-up depression after controlling for **baseline depression** and other relevant covariates.
 
-We applied a novel framework combining sparse functional data analysis (FDA) with the Generalised Hilbertian Covariance Measure (GHCM) to two longitudinal datasets from Dartmouth College: 
-the StudentLife study (2013; $N=38$) and the College Experience Study (2017–-2022; $N=196$). Four distinct analyses were conducted, operationalizing physical activity as daily 
-active minutes or step counts and adjusting for baseline depression, concurrent behaviors (conversation duration and phone lock duration), and gender. A bootstrap procedure was used to quantify the uncertainty of the resulting $p$-values of the GHCM test.
+We applied a novel framework combining **sparse functional data analysis (FDA)** with the **Generalised Hilbertian Covariance Measure (GHCM)** to two longitudinal datasets from Dartmouth College:  
+- *StudentLife 2013* ($N=38$)  
+- *StudentLife 2017–2022* ($N=196$)  
 
-Across all four analyses, we failed to reject the null hypothesis of conditional independence. However, bootstrap analysis revealed that 
-the findings for three of the four analyses were inconclusive, with only one analysis providing robust evidence for the null hypothesis. 
+Four analyses were conducted, operationalizing physical activity as **daily active minutes** or **step counts**, and adjusting for baseline depression, concurrent behaviors (conversation duration, phone lock duration), and gender. A bootstrap procedure was used to quantify the uncertainty of the resulting $p$-values of the GHCM tests.
 
-Our findings suggest that, in these samples, the longitudinal physical activity signal did not provide additional predictive information about follow-up depression 
-beyond what was contained in the conditioning set. This thesis serves as a crucial proof of concept, demonstrating a rigorous methodology for moving beyond marginal 
-correlations to testing conditional associations in digital mental health. As such, we demonstrate the critical importance of accounting for measured confounding.
+Across all four analyses, we failed to reject the null hypothesis of conditional independence. However, bootstrap analysis indicated that three of the four results were inconclusive, and only one provided robust evidence for the null hypothesis.
+
+Our findings suggest that, in these samples, the longitudinal physical activity signal did not provide additional predictive information about follow-up depression beyond what was contained in the conditioning set. This thesis serves as a **proof of concept**, demonstrating a rigorous methodology for moving beyond marginal correlations to testing conditional associations in digital mental health. As such, it highlights the critical importance of accounting for measured confounding.
 
 
 ## About this repository
@@ -56,21 +53,6 @@ The raw datasets are publicly available and are not included in this repository.
 - Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
 - Run the scripts. 
 
-
-
-## Abstract
-
-Mobile sensing has become increasingly popular for studying depression using objective, real-world data. However, much of the literature focuses on marginal associations without adjusting for measured confounding. This thesis addresses that gap by testing whether passively sensed **physical activity** predicts follow-up depression after controlling for **baseline depression** and other relevant covariates.
-
-We applied a novel framework combining **sparse functional data analysis (FDA)** with the **Generalised Hilbertian Covariance Measure (GHCM)** to two longitudinal datasets from Dartmouth College:  
-- *StudentLife 2013* ($N=38$)  
-- *StudentLife 2017–2022* ($N=196$)  
-
-Four analyses were conducted, operationalizing physical activity as **daily active minutes** or **step counts**, and adjusting for baseline depression, concurrent behaviors (conversation duration, phone lock duration), and gender. A bootstrap procedure was used to quantify the uncertainty of GHCM $p$-values.
-
-Across all four analyses, we failed to reject the null hypothesis of conditional independence. However, bootstrap analysis indicated that three of the four results were inconclusive, and only one provided robust evidence for the null hypothesis.
-
-These findings suggest that, in these samples, the longitudinal physical activity signal did not add predictive value for follow-up depression beyond the conditioning variables. This work serves as a **proof of concept**, demonstrating a rigorous methodology for moving beyond marginal correlations to testing conditional associations in digital mental health. It highlights the critical importance of accounting for measured confounding.
 
 
 ## About This Repository
