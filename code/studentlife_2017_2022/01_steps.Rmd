@@ -1,5 +1,5 @@
 ---
-title: "34_studentlife_sensing"
+title: "steps"
 date: "2025-06-25"
 output: html_document
 ---
@@ -228,35 +228,12 @@ plot_01 <- steps_smoothed %>%
   labs(
     x = "Normalized time", y = "Normalized daily step count"
   )
+print(plot_01)
 ggsave(file.path(plot_path, "plot_01.pdf"), plot_01, width = 7, height = 4)
 
 ```
  
 
-
-
-
-```{r}
-# plot step trajectories colored by mean phq4
-
-# load phq4 mean per subject
-Y_df <- readRDS("data/studentlife_2017_2022/preprocessed/joint/ema.rds") %>%
-  group_by(.obs) %>%
-  summarize(Y = mean(.value), .groups = "drop")
-
-steps %>%
-  left_join(Y_df, by = ".obs") %>%
-  filter(.obs <= 10) %>%
-  ggplot(aes(x = .index, y = .value, group = .obs, color = Y)) +
-  geom_line(alpha = 0.7) +
-  scale_color_gradient(name = "mean phq4") +
-  #theme_bw() + makes background white
-  labs(
-    title = "step profiles colored by mean phq4",
-    x = "normalized time", y = "steps"
-  )
-
-```
 
 
 
