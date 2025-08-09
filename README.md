@@ -21,20 +21,18 @@ Across all four analyses, we failed to reject the null hypothesis of conditional
 Our findings suggest that, in these samples, the longitudinal physical activity signal did not provide additional predictive information about follow-up depression beyond what was contained in the conditioning set. This thesis serves as a **proof of concept**, demonstrating a rigorous methodology for moving beyond marginal correlations to testing conditional associations in digital mental health. As such, it highlights the critical importance of accounting for measured confounding.
 
 
-## About this repository
-This repository contains all the R code used for the data preprocessing, analysis, and visualization described in the abstract above. The analysis is divided into two main parts, based on the StudentLife 2013 dataset and the StudentLife 2017–2022 dataset.
-
 ## Data 
-The raw datasets are publicly available and are not included in this repository. To run the analysis, you must download the data and place it in the correct directory.
+The raw datasets are **publicly available** but **not included** in this repository. To reproduce the analysis:
 
 
 1.  **Download the data:**
     * StudentLife 2013: https://studentlife.cs.dartmouth.edu/datasets.html
     * StudentLife 2017-2022: https://www.kaggle.com/datasets/subigyanepal/college-experience-dataset
   
-2.  **Organize the data folders:** Inside this project, create a new folder named `data`. Then, create two subfolders inside it `studentlife_2013` and `studentlife_2017_2022`. Important: Rename the folders to match the names used in the scripts:
-    *Place the unzipped contents of the first StudentLife dataset into the folder `data/studentlife_2013/raw`.
-    *Place the unzipped contents of the College Experience Study (2017-2022) dataset into the `data/studentlife_2017_2022`.
+  
+2.  **Organize the data folders:** Inside the project root, create a new folder named `data` with the following strucutre:
+    *Place the unzipped StudentLife 2013 dataset into `data/studentlife_2013/raw/`.
+    *Place the unzipped StudentLife 2017--2022 dataset into `data/studentlife_2017_2022/`.
     
     The final structure should look like this:
 
@@ -47,39 +45,9 @@ The raw datasets are publicly available and are not included in this repository.
         └── ... (raw files from StudentLife 2017-2022)
     ```
 
-3. **Run the scripts:**  
-  
-### 3. Run the scripts
-- Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
-- Run the scripts. 
-
-
-
-## About This Repository
-
-This repository contains the full R code for:  
-- **Data preprocessing**  
-- **Statistical analysis**  
-- **Visualization**  
-
-The analysis is organized into two main components, corresponding to **StudentLife 2013** and **StudentLife 2017–2022**.
-
-## Data
-
-The raw datasets are **publicly available** but **not included** in this repository. To reproduce the analysis:
-
-### 1. Download the data
-- **StudentLife 2013:** [dataset link](https://studentlife.cs.dartmouth.edu/datasets.html)  
-- **StudentLife 2017–2022:** [dataset link](https://www.kaggle.com/datasets/subigyanepal/college-experience-dataset)
-
-### 2. Organize the data folders
-Inside the project root, create a folder named `data/` with the following structure:
-- Place the unzipped **StudentLife 2013** dataset into `data/studentlife_2013/raw/`.
-- Place the unzipped **College Experience Study** dataset into `data/studentlife_2017_2022/`.
-
-### 3. Run the scripts
-- Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
-- Run the scripts in sequence; they will automatically read from the above directories.
+3.	**Run the scripts:**
+		*Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
+		*Run the scripts. 
 
 ---
 
