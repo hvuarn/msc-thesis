@@ -1,7 +1,12 @@
 # Toward causality in mobile sensing for depression: Modeling time-varying behavior with functional data
 
-This repository contains all the R code used for the data preprocessing, analysis, and visualization for my master's thesis. 
-The analysis is divided into two main parts, based on two distinct datasets: the StudentLife 2013 dataset and the StudentLife 2017-2022 dataset.
+This repository contains all the R code used for **data preprocessing, analysis, and visualization** for my master's thesis.  
+The code analysis is divided into two main parts for the publicly available datasets that we use. 
+
+Of the three *StudentLife* studies, we use the two publicly available datasets:  
+- the original *StudentLife* study ([Wang et al., 2014](#references)), referred to as **StudentLife 2013**  
+- the *College Experience Study* ([Nepal et al., 2024](#references)), referred to as **StudentLife 2017–2022**  
+
 
 ## Abstract
 Mobile sensing has become increasingly popular for studying depression with objective, real-world data. However, much of the existing literature only reports 
@@ -26,11 +31,6 @@ This repository contains all the R code used for the data preprocessing, analysi
 #----------------
 ## Data 
 The raw datasets are publicly available and are not included in this repository. To run the analysis, you must download the data and place it in the correct directory.
-
-Of the three StudentLife studies, we use the two publicly available datasets: 
-the original StudentLife study \citep{Wang2014} and the College Experience Study \citep{Nepal2024}. 
-The first is available from the project's website \citep{StudentLife2013} and the second was released on Kaggle on April 15, 2025 \citep{Kaggle}. 
-We refer to the datasets as StudentLife 2013 and StudentLife 2017–2022, respectively.
 
 1.  **Download the data:**
     * StudentLife 2013: https://studentlife.cs.dartmouth.edu/datasets.html
@@ -58,4 +58,10 @@ We refer to the datasets as StudentLife 2013 and StudentLife 2017–2022, respec
   - open `msc-thesis-public.Rproj` in RStudio (located in the root folder)
 
 
+
+## References
+
+- Wang, R., Chen, F., Chen, Z., Li, T., Harari, G., Tignor, S., Zhou, X., Ben-Zeev, D., & Campbell, A. T. (2014). *StudentLife: Assessing mental health, academic performance and behavioral trends of college students using smartphones.* Proceedings of the 2014 ACM International Joint Conference on Pervasive and Ubiquitous Computing, 3–14. https://doi.org/10.1145/2632048.2632054  
+
+- Nepal, S., Liu, W., Pillai, A., Wang, W., Vojdanovski, V., Huckins, J. F., Rogers, C., Meyer, M. L., & Campbell, A. T. (2024). *Capturing the College Experience: A Four-Year Mobile Sensing Study of Mental Health, Resilience and Behavior of College Students during the Pandemic.* Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, 8(1), 1–38. https://doi.org/10.1145/3643501  
 
