@@ -52,13 +52,6 @@ The raw datasets are **publicly available** but **not included** in this reposit
 ---
 
 
-## **How to Run the Analysis**
-
-It is **highly recommended** to open `msc-thesis-public.Rproj` in RStudio. This sets the correct working directory automatically. The analysis scripts are located in the `code/` folder, organized into subdirectories for each dataset.
-
-For the specific execution order for each dataset, **please see the `README.md` file inside the respective analysis sub-folder** (`studentlife_2013` or `studentlife_2017_2022`).
-
-
 ## References
 
 - Wang, R., Chen, F., Chen, Z., Li, T., Harari, G., Tignor, S., Zhou, X., Ben-Zeev, D., & Campbell, A. T. (2014). *StudentLife: Assessing mental health, academic performance and behavioral trends of college students using smartphones.* Proceedings of the 2014 ACM International Joint Conference on Pervasive and Ubiquitous Computing, 3–14. https://doi.org/10.1145/2632048.2632054  

@@ -8,14 +8,14 @@ This folder contains all R scripts for the preprocessing to investigate the rela
 
 Please run the scripts in the following order to ensure all data dependencies are met.
 
-1.  **`00_phq9.R`**: Cleans and performs exploratory analysis on the PHQ-9 survey data.
-2.  **`01_activity_cleaning.R`**: Cleans and preps the raw activity sensing data.
-3.  **`02_activity_daily_minutes.R`**: Cleans and normalized the daily activity data for GHCM input.
-4.  **`03_joint_overview.R`**: Joins all preprocessed datasets. 
-5.  **`04_ghcm.R`**: Runs the baseline GHCM test, controlling only for baseline depression (Analysis 1).
-6.  **`05_convo.Rmd`**: Cleans and prepares the conversation duration data.
-7.  **`06_phonelock.Rmd`**: Cleans and prepares the phone lock duration data.
-8.  **`07_ghcm.Rmd`**: Runs the full GHCM test, controlling for additional functional covariates (Anaylsis 2).
+1.  **`01_phq9.R`**: Cleans and performs exploratory analysis on the PHQ-9 survey data.
+2.  **`02_activity_cleaning.R`**: Cleans and preps the raw activity sensing data.
+3.  **`03_activity_daily_minutes.R`**: Cleans and normalized the daily activity data for GHCM input.
+4.  **`04_joint_overview.R`**: Joins all preprocessed datasets. 
+5.  **`05_ghcm.R`**: Runs the baseline GHCM test, controlling only for baseline depression (Analysis 1).
+6.  **`06_convo.Rmd`**: Cleans and prepares the conversation duration data.
+7.  **`07_phonelock.Rmd`**: Cleans and prepares the phone lock duration data.
+8.  **`08_ghcm.Rmd`**: Runs the full GHCM test, controlling for additional functional covariates (Anaylsis 2).
 
 
 ## Some high level details: 
