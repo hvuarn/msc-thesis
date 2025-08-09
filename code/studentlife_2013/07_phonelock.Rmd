@@ -22,13 +22,15 @@ library(ggplot2)
 ## phone use
 
 ```{r}
+# Make sure that Knit Directory is set to Project Directory! 
+# Knit ▸ Knit Directory ▸ Project Directory
+
 rm(list = ls())
 gc()
 
-
 # paths
 data_path <- "data/studentlife_2013/raw/dataset/sensing/phonelock"
-save_path <- "data/studentlife_2013/preprocessed/sensing/phoneuse"
+save_path <- "data/studentlife_2013/preprocessed/sensing/phonelock"
 if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
 save_plot_path <- file.path(save_path, "plots")
 if (!dir.exists(save_plot_path)) dir.create(save_plot_path, recursive = TRUE)

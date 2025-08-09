@@ -1,6 +1,5 @@
 ---
 title: "34_studentlife_sensing"
-author: ""
 date: "2025-06-25"
 output: html_document
 ---
@@ -22,7 +21,7 @@ library(zoo)
 ## sensing: steps
 
 ```{r}
-# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Make sure that Knit Directory is set to Project Directory! 
 # Knit ▸ Knit Directory ▸ Project Directory
 
 rm(list = ls())

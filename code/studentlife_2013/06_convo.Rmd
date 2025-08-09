@@ -22,12 +22,15 @@ library(ggplot2)
 
 
 ```{r}
+# Make sure that Knit Directory is set to Project Directory! 
+# Knit ▸ Knit Directory ▸ Project Directory
+
 rm(list = ls())
 gc()
 
-# conversation frequency: user is around conversation
-# number of independent conversations and their duration.
+# Conversation frequency (Wang et al. 2014): user is "around conversation". 
 # Following Wang et al. 2014: We consider the frequency and duration of conversations around a participant as a measure of sociability.
+# number of independent conversations and their duration.
 
 # paths
 data_path <- "data/studentlife_2013/raw/dataset/sensing/conversation"
@@ -54,9 +57,6 @@ process_file <- function(file_path) {
 # apply to all files
 read_csv(file_list[1])
 print(file_list)
-
-#convo_u00 <- read.csv(file.path(data_path, "conversation_u00.csv"))
-#colnames(convo_u00)
 
 convo_raw <- map_dfr(file_list, process_file)
 colnames(convo_raw)
