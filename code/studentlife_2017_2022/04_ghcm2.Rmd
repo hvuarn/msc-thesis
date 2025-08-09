@@ -1,6 +1,5 @@
 ---
-title: ""
-author: ""
+title: "04_ghcm2"
 date: "2025-06-30"
 output: html_document
 ---
@@ -17,10 +16,12 @@ library(ghcm)
 library(refund)
 ```
 
-# ghcm: functional phq4 indep of steps given gender
+# GHCM: functional phq4 indep of steps given gender
+
+Bootstrap at the end (third last chunk) will take very long!
 
 ```{r}
-# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Make sure that Knit Directory is set to Project Directory! 
 # Knit ▸ Knit Directory ▸ Project Directory
 
 rm(list = ls())
@@ -113,8 +114,6 @@ model_Y <- pffr(
   ydata = Y_fixed,
   data = Z_df)
 resid_Y <- residuals(model_Y)
-
-
 ```
 
 
@@ -237,6 +236,7 @@ bootstrap_ghcm_gender <- function(i) {
 
 
 ```{r}
+# this will take very long!
 set.seed(123)
 plan(multisession)
 B <- 100
@@ -244,7 +244,6 @@ p_values <- map_dbl(1:B, bootstrap_ghcm_gender)
 
 # save
 saveRDS(p_values, file.path(save_path, glue::glue("ghcm_p_values_B{B}.rds")))
-
 ```
 
 
@@ -260,7 +259,6 @@ summary_ghcm_boot <- list(
   B = B
 )
 saveRDS(summary_ghcm_boot, file = file.path(save_path, "ghcm_boot_summary.rds"))
-
 ```
 
 

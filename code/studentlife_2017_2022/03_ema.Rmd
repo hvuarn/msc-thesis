@@ -26,7 +26,7 @@ library(ggdist) # raincloud plot
 ## EMA: phq-4
 
 ```{r}
-# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Make sure that Knit Directory is set to Project Directory! 
 # Knit ▸ Knit Directory ▸ Project Directory
 
 rm(list = ls())
@@ -428,9 +428,6 @@ phq_times_duration %>%
 
 
 ```{r}
-# save
-save_path <- "data/studentlife_2017_2022/preprocessed/joint"
-if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
 
 saveRDS(steps_trunc, "data/studentlife_2017_2022/preprocessed/joint/steps.rds")
 saveRDS(ema_clean, "data/studentlife_2017_2022/preprocessed/joint/ema.rds")

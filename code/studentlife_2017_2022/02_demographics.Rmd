@@ -1,6 +1,5 @@
 ---
-title: "studentlife 2025"
-author: ""
+title: "demographics"
 date: "2025-06-25"
 output: html_document
 ---
@@ -18,7 +17,7 @@ library(kableExtra)
 ## demographics summary
 
 ```{r}
-# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Make sure that Knit Directory is set to Project Directory! 
 # Knit ▸ Knit Directory ▸ Project Directory
 
 # set paths
@@ -202,7 +201,9 @@ gender <- gender_clean %>%
   arrange(.obs)
 
 # save for ghcm use
-saveRDS(gender, "data/studentlife_2017_2022/preprocessed/joint/gender.rds")
+save_path2 <- "data/studentlife_2017_2022/preprocessed/joint"
+if (!dir.exists(save_path2)) dir.create(save_path2, recursive = TRUE)
 
+saveRDS(gender, "data/studentlife_2017_2022/preprocessed/joint/gender.rds")
 ```
 

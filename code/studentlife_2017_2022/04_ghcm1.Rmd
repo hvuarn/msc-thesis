@@ -1,6 +1,5 @@
 ---
-title: "05_ghcm1"
-author: ""
+title: "04_ghcm1"
 date: "2025-07-07"
 output: html_document
 ---
@@ -23,10 +22,10 @@ library(furrr)
 library(ggplot2)
 ```
 
-# ghcm: steps independent of phq4 post given phq4 pre
+# GHCM: steps independent of phq4 post given phq4 pre
 
 ```{r}
-# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Make sure that Knit Directory is set to Project Directory! 
 # Knit ▸ Knit Directory ▸ Project Directory
 
 rm(list = ls())
