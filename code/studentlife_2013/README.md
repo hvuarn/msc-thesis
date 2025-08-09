@@ -51,3 +51,24 @@ You can also run the scripts using:
 ```r
 source("Rcode/01_activity_cleaning.R")
 source("Rcode/02_activity_daily_minutes.R")
+
+
+
+
+recommended: run via RStudio project
+to ensure relative paths and project structure work correctly:
+
+▶ open the R project:
+  - open `msc-thesis-public.Rproj` in RStudio (located in the root folder)
+
+▶ run the cleaning script:
+  - open `rcode/01_activity_cleaning.R` inside the project
+  - run the full script
+
+▶ outputs will be saved as:
+  - data/preprocessed/sensing/activity/activity_clean.csv
+  - data/preprocessed/sensing/activity/activity_clean.rds
+
+this will generate the cleaned activity dataset from raw studentlife files
+
+
