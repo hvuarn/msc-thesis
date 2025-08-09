@@ -1,9 +1,12 @@
 # Toward causality in mobile sensing for depression: Modeling time-varying behavior with functional data
 
+
 This repository contains the R code for **data preprocessing, analysis, and visualization** used in my master's thesis. The code folder contains two subfolders each for one of the publicly available datasets we use:
 
 - **StudentLife 2013** — the original *StudentLife* study ([Wang et al., 2014](#references))  
 - **StudentLife 2017–2022** — the *College Experience Study* ([Nepal et al., 2024](#references))
+
+This repository contains all the R code used for **data preprocessing, analysis, and visualization** for my master's thesis. The code analysis is divided into two main parts for the publicly available datasets that we use.
 
 Of the three *StudentLife* studies, we use the two publicly available datasets:  
 - the original *StudentLife* study ([Wang et al., 2014](#references)), referred to as **StudentLife 2013**  
