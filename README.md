@@ -10,7 +10,7 @@ This repository contains the R code for **data preprocessing, analysis, and visu
 ## Abstract
 Mobile sensing has become increasingly popular for studying depression with objective, real-world data. However, much of the existing literature focuses on marginal associations without controlling for measured confounding. This thesis addresses that gap by testing whether passively sensed **physical activity** influences follow-up depression after controlling for **baseline depression** and other relevant covariates.
 
-We applied a novel framework combining **sparse functional data analysis (FDA)** ([Yao et al., 2005](#references); [Ramsay and Silverman, 2005](#references); [Wang et al., 2016](#references); [Gertheiss et al., 2024](#references)) with the **Generalised Hilbertian Covariance Measure (GHCM)** ([Lundborg et al., 2022](#references)) to two longitudinal datasets from Dartmouth College:  
+We applied a novel framework combining **sparse functional data analysis (FDA)** ([Ramsay and Silverman, 2005](#references); [Yao et al., 2005](#references); [Wang et al., 2016](#references); [Gertheiss et al., 2024](#references)) with the **Generalised Hilbertian Covariance Measure (GHCM)** ([Lundborg et al., 2022](#references)) to two longitudinal datasets from Dartmouth College:  
 - *StudentLife 2013 (N=38)*
 - *StudentLife 2017–2022 (N=196)*
 
@@ -55,18 +55,17 @@ The raw datasets are **publicly available** but **not included** in this reposit
 
 ## References
 
-- Gertheiss, J., Rügamer, D., Liew, B. X. W., and Greven, S. (2024). Functional Data Analysis: An Introduction and Recent Developments. *Biometrical Journal*, 66(7).
+- Gertheiss, J., Rügamer, D., Liew, B. X. W., and Greven, S. (2024). Functional Data Analysis: An Introduction and Recent Developments. *Biometrical Journal*, 66(7). https://doi.org/10.1002/bimj.202300363
 
-- Lundborg, A. R., Shah, R. D., and Peters, J. (2022). Conditional Independence Testing in Hilbert Spaces with Applications to Functional Data Analysis. *Journal of the Royal Statistical Society Series B: Statistical Methodology*, 84(5):1821–1850.
+- Lundborg, A. R., Shah, R. D., and Peters, J. (2022). Conditional Independence Testing in Hilbert Spaces with Applications to Functional Data Analysis. *Journal of the Royal Statistical Society Series B: Statistical Methodology*, 84(5):1821–1850. https://doi.org/10.1111/rssb.12544
 
-- Nepal, S., Liu, W., Pillai, A., Wang, W., Vojdanovski, V., Huckins, J. F., Rogers, C., Meyer, M. L., and Campbell, A. T. (2024). Capturing the College Experience: A Four-Year Mobile Sensing Study of Mental Health, Resilience and Behavior of College Students during the Pandemic. *Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies*, 8(1):1–37.
+- Nepal, S., Liu, W., Pillai, A., Wang, W., Vojdanovski, V., Huckins, J. F., Rogers, C., Meyer, M. L., and Campbell, A. T. (2024). Capturing the College Experience: A Four-Year Mobile Sensing Study of Mental Health, Resilience and Behavior of College Students during the Pandemic. *Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies*, 8(1):1–37. https://doi.org/10.1145/3643501
 
-- Ramsay, J. O. and Silverman, B. W. (2005). *Functional Data Analysis*. Springer New York.
+- Ramsay, J. O. and Silverman, B. W. (2005). *Functional Data Analysis*. Springer New York. https://doi.org/10.1007/b98888
 
-- Yao, F., Müller, H.-G., and Wang, J.-L. (2005). Functional Data Analysis for Sparse Longitudinal Data. *Journal of the American Statistical Association*, 100(470):577–590.
+- Yao, F., Müller, H.-G., and Wang, J.-L. (2005). Functional Data Analysis for Sparse Longitudinal Data. *Journal of the American Statistical Association*, 100(470):577–590. https://doi.org/10.1198/016214504000001745
 
-- Wang, J.-L., Chiou, J.-M., and Müller, H.-G. (2016). Functional Data Analysis. *Annual Review of Statistics and Its Application*, 3(1):257–295.
+- Wang, J.-L., Chiou, J.-M., and Müller, H.-G. (2016). Functional Data Analysis. *Annual Review of Statistics and Its Application*, 3(1):257–295. https://doi.org/10.1146/annurev-statistics-041715-033624
 
-- Wang, R., Chen, F., Chen, Z., Li, T., Harari, G., Tignor, S., Zhou, X., Ben-Zeev, D., and Campbell, A. T. (2014). StudentLife: assessing mental health, academic performance and behavioral trends of college students using smartphones. In *Proceedings of the 2014 ACM International Joint Conference on Pervasive and Ubiquitous Computing*, UbiComp ’14, page 3–14. ACM.
-
+- Wang, R., Chen, F., Chen, Z., Li, T., Harari, G., Tignor, S., Zhou, X., Ben-Zeev, D., and Campbell, A. T. (2014). StudentLife: assessing mental health, academic performance and behavioral trends of college students using smartphones. In *Proceedings of the 2014 ACM International Joint Conference on Pervasive and Ubiquitous Computing*, UbiComp ’14, page 3–14. ACM. https://doi.org/10.1145/2632048.2632054
 
