@@ -1,0 +1,299 @@
+---
+title: "34_studentlife_sensing"
+author: ""
+date: "2025-06-25"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(glue)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(ggplot2)
+library(tidyr)
+library(zoo)
+```
+
+## sensing: steps
+
+```{r}
+# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Knit ▸ Knit Directory ▸ Project Directory
+
+rm(list = ls())
+gc()
+
+# set paths
+data_path <- "data/studentlife_2017_2022/archive/Sensing"
+save_path <- "data/studentlife_2017_2022/preprocessed/sensing"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+plot_path <- file.path(save_path, "plots")
+if (!dir.exists(plot_path)) dir.create(plot_path, recursive = TRUE)
+
+# read data
+steps_raw <- read_csv(glue("{data_path}/steps.csv")) %>% dplyr::distinct()
+```
+
+
+```{r}
+# pivot to long
+steps <- steps_raw %>%
+  pivot_longer(
+    cols = starts_with("step_hr_"),
+    names_to = "hour",
+    names_prefix = "step_hr_",
+    values_to = "steps"
+  ) %>%
+  mutate(
+    hour = as.integer(hour),
+    day = ymd(day),
+    timestamp = day + hours(hour)
+  )
+
+# remove NAs
+n_na <- sum(is.na(steps$steps))
+steps <- steps %>% filter(!is.na(steps))
+glue::glue("Removed {n_na} rows with missing step values.")
+```
+
+
+```{r}
+# aggregate steps per day
+steps <- steps %>%
+  group_by(uid, day) %>%
+  summarize(step_count = sum(steps, na.rm = TRUE), .groups = "drop")
+
+# normalize time globally
+min_day <- min(steps$day)
+max_day <- max(steps$day)
+
+steps <- steps %>%
+  mutate(
+    time_norm = as.numeric(difftime(day, min_day, units = "days")) /
+                as.numeric(difftime(max_day, min_day, units = "days"))
+  )
+
+```
+
+
+```{r}
+summary(steps$step_count)
+boxplot(steps$step_count)
+
+# remove outliers
+q1 <- quantile(steps$step_count, 0.25)
+q3 <- quantile(steps$step_count, 0.75)
+iqr <- q3 - q1
+upper_bound <- q3 + 1.5 * iqr
+lower_bound <- q1 - 1.5 * iqr  # usually zero for steps
+
+# count and filter
+n_outliers <- sum(steps$step_count < lower_bound | steps$step_count > upper_bound)
+
+steps <- steps %>%
+  filter(step_count >= lower_bound, step_count <= upper_bound)
+
+summary(steps$step_count)
+boxplot(steps$step_count)
+
+glue::glue("Removed {n_outliers} outliers.")
+```
+
+
+```{r}
+# ghcm needs at least 4 observations!
+
+# count students with <4 days of data
+n_removed <- steps %>%
+  count(uid, name = "n_days") %>%
+  filter(n_days < 4) %>%
+  nrow()
+
+# filter students with ≥4 days of data
+steps <- steps %>%
+  group_by(uid) %>%
+  filter(n() >= 4) %>%
+  ungroup()
+
+glue::glue("Removed {n_removed} students with less than 4 days of data.")
+
+```
+
+
+
+```{r}
+# map uid → .obs 
+uid_map <- steps %>%
+  distinct(uid) %>%
+  mutate(.obs = row_number())
+
+# between-subject (global) normalization 
+min_val <- min(steps$step_count, na.rm = TRUE)
+max_val <- max(steps$step_count, na.rm = TRUE)
+
+# Now, apply this global scaling to everyone
+steps <- steps %>%
+  left_join(uid_map, by = "uid") %>%
+  mutate(.value = (step_count - min_val) / (max_val - min_val)) %>%
+  ungroup() %>%
+  transmute(.obs, .index = time_norm, .value)
+
+```
+
+
+
+
+```{r}
+# plot functional trajectories (daily steps)
+steps %>%
+  filter(.obs <= 5) %>%
+  ggplot(aes(x = .index, y = .value, group = .obs, color = factor(.obs))) +
+  geom_line(alpha = 0.3) +
+  geom_point(size = 0.1) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized daily steps"
+  ) +
+  guides(color = "none")
+
+```
+
+```{r}
+# plot functional trajectories (daily steps)
+steps %>%
+  ggplot(aes(x = .index, y = .value, group = .obs, color = factor(.obs))) +
+  geom_line(alpha = 0.3) +
+  #geom_point(size = 0.05) +
+  theme_bw() +
+  labs(
+    title = "daily step profiles",
+    x = "normalized time", y = "steps"
+  ) +
+  guides(color = "none")
+
+```
+
+```{r}
+steps %>%
+  group_by(.obs) %>%
+  mutate(smoothed = zoo::rollmean(.value, k = 5, fill = NA)) %>%
+  ungroup() %>%
+  ggplot(aes(x = .index, y = smoothed, group = .obs, color = factor(.obs))) +
+  geom_line(alpha = 0.3) +
+  theme_bw() +
+  labs(
+    title = "smoothed step profiles (first 5 users)",
+    x = "normalized time", y = "steps"
+  ) +
+  guides(color = "none") + 
+	stat_summary(aes(group = 1), fun = mean, geom = "line", color = "black", size = 0.1)
+
+```
+
+
+```{r}
+# this is the one i use!! not smoothed!
+plot_02 <- steps %>%
+  ggplot(aes(x = .index, y = .value, group = .obs)) +
+  geom_line(color = "darkgrey", alpha = 0.05, na.rm = TRUE) + # grey80 or darkgrey?
+  stat_summary(aes(group = 1), fun = mean, geom = "line",
+               color = "red", size = 0.3, linetype = "solid", na.rm = TRUE) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized daily step count"
+  )
+ggsave(file.path(plot_path, "plot_02.pdf"), plot_02, width = 7, height = 4)
+```
+
+
+
+```{r}
+# smooth per user "best one"!
+steps_smoothed <- steps %>%
+  group_by(.obs) %>%
+  mutate(smoothed = zoo::rollmean(.value, k = 5, fill = NA)) %>%
+  ungroup()
+
+# plot
+plot_01 <- steps_smoothed %>%
+  ggplot(aes(x = .index, y = smoothed, group = .obs)) +
+  geom_line(color = "darkgrey", alpha = 0.05, na.rm = TRUE) + # na.rm TRUE supress warnings!
+  stat_summary(aes(group = 1), fun = mean, geom = "line",
+               color = "red", size = 0.3, linetype = "solid", na.rm = TRUE) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized daily step count"
+  )
+ggsave(file.path(plot_path, "plot_01.pdf"), plot_01, width = 7, height = 4)
+
+```
+ 
+
+
+
+
+```{r}
+# plot step trajectories colored by mean phq4
+
+# load phq4 mean per subject
+Y_df <- readRDS("data/studentlife_2017_2022/preprocessed/joint/ema.rds") %>%
+  group_by(.obs) %>%
+  summarize(Y = mean(.value), .groups = "drop")
+
+steps %>%
+  left_join(Y_df, by = ".obs") %>%
+  filter(.obs <= 10) %>%
+  ggplot(aes(x = .index, y = .value, group = .obs, color = Y)) +
+  geom_line(alpha = 0.7) +
+  scale_color_gradient(name = "mean phq4") +
+  #theme_bw() + makes background white
+  labs(
+    title = "step profiles colored by mean phq4",
+    x = "normalized time", y = "steps"
+  )
+
+```
+
+
+
+
+```{r}
+# Nepal et al. (2024): 22% missingness in steps
+# check!
+anyNA(steps)
+anyNA(steps_raw)
+# Nepal et al. 2024: In terms of missing data, we find an average per-user missing value rate of approximately 20% for location-based features, 12% for audio play-based features, and 22% for steps. We have no missing data for physical activity features, and as the phone usage and sleep features are derived, they invariably have non-empty values.
+
+# coverage: number of days with data per student
+coverage <- steps_raw %>%
+  group_by(uid) %>%
+  summarize(days_with_data = n_distinct(day), .groups = "drop")
+
+max(coverage$days_with_data)
+min(coverage$days_with_data)
+hist(coverage$days_with_data)
+
+# max days is ~ 3.8 yrs!
+```
+
+
+
+```{r}
+# after building steps_ready_daily
+saveRDS(steps, file.path(save_path, "steps.rds"))
+saveRDS(uid_map, "data/studentlife_2017_2022/preprocessed/uid_map.rds")  # save globally
+
+# save min and max day for time alignment
+time_range <- list(min_day = min_day, max_day = max_day)
+saveRDS(time_range, file.path(save_path, "steps_time_range.rds"))
+
+```
+
+
+
+

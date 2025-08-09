@@ -1,0 +1,253 @@
+---
+title: "05_ghcm1"
+author: ""
+date: "2025-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load required packages
+library(dplyr)
+library(readr)
+library(glue)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(ghcm)
+library(refund)
+library(mgcv)
+library(purrr)
+library(furrr)
+library(ggplot2)
+```
+
+# ghcm: steps independent of phq4 post given phq4 pre
+
+```{r}
+# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Knit ▸ Knit Directory ▸ Project Directory
+
+rm(list = ls())
+gc()
+
+# load data
+joint_path <- "data/studentlife_2017_2022/preprocessed/joint"
+X <- readRDS(file.path(joint_path, "steps.rds"))       # functional predictor
+ema <- readRDS(file.path(joint_path, "ema.rds"))       # phq-4 (weekly scores)
+
+save_path <- "data/studentlife_2017_2022/preprocessed/results/analysis_03"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+
+```
+
+```{r}
+# get pre and post value of phq4
+phq_wide <- ema %>%
+  group_by(.obs) %>%
+  arrange(.index) %>%
+  summarize(
+    phq4_pre = first(.value),
+    phq4_post = last(.value),
+    .groups = "drop"
+  )
+
+# common obs
+common_obs <- intersect(unique(X$.obs), unique(phq_wide$.obs))
+
+# build obs index
+obs_map <- data.frame(.obs = sort(common_obs)) %>%
+  mutate(obs_index = row_number())
+
+# fix X (steps)
+X_fixed <- X %>%
+  filter(.obs %in% common_obs) %>%
+  inner_join(obs_map, by = ".obs") %>%
+  dplyr::select(.obs = obs_index, .index, .value)
+
+# fix Y = phq4_post
+Y_df <- phq_wide %>%
+  filter(.obs %in% common_obs) %>%
+  inner_join(obs_map, by = ".obs") %>%
+  arrange(obs_index)
+Y_vec <- Y_df$phq4_post
+
+# fix Z = phq4_pre
+Z_df <- data.frame(
+  obs_index = Y_df$obs_index,
+  phq4_pre = Y_df$phq4_pre
+)
+rownames(Z_df) <- Z_df$obs_index
+```
+
+```{r}
+# regress out baseline phq from both Y and X
+
+# scalar-on-scalar
+model_Y <- gam(phq4_post ~ s(phq4_pre), data = Y_df)
+resid_Y <- resid(model_Y)
+
+# sclar-on-function
+model_X <- pffr(
+  .value ~ phq4_pre,
+  ydata = X_fixed,
+  data = Z_df)
+resid_X <- residuals(model_X)
+
+```
+
+```{r}
+# ghcm test
+X_limits <- range(X_fixed$.index)
+
+ghcm_result <- ghcm_test(
+  resid_X,
+  resid_Y,
+  X_limits = X_limits
+)
+
+print.default(ghcm_result)
+saveRDS(ghcm_result, file = file.path(save_path, "ghcm_result.rds"))
+ghcm_summary <- list( 
+	test_statistic = round(ghcm_result$test_statistic, 3),
+	p_value = round(ghcm_result$p, 3),
+	alpha = ghcm_result$alpha,
+	reject = ghcm_result$reject
+)
+saveRDS(ghcm_summary, file = file.path(save_path, "ghcm_summary.rds"))
+```
+
+```{r}
+plot(model_Y)
+gam.check(model_Y)
+
+# gam
+pdf(file.path(save_path, "gam_plot.pdf"), width = 7, height = 5)
+plot(model_Y, residuals = TRUE, se = TRUE)  
+dev.off()
+
+pdf(file.path(save_path, "gam_check.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))           
+gam.check(model_Y, pages = 0)   
+dev.off()
+```
+
+
+
+```{r}
+summary(model_X)
+plot(model_X)
+
+# pffr plot 
+pdf(file.path(save_path, "pffr_plot.pdf"), width = 7, height = 4)
+par(mfrow = c(1, 2))
+plot(model_X, pages = 0)
+dev.off()
+```
+```{r}
+# pffr check
+pdf(file.path(save_path, "pffr_check.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))
+pffr.check(model_X)
+dev.off()
+```
+
+
+
+```{r}
+bootstrap_ghcm <- function(i) {
+  obs_ids <- sample(seq_len(nrow(Z_df)), replace = TRUE)
+
+  # get .obs values from original
+  sampled_obs <- as.integer(rownames(Z_df)[obs_ids])
+
+  # deduplicated obs map
+  obs_map <- data.frame(.obs = sampled_obs) %>%
+    dplyr::distinct(.obs, .keep_all = TRUE) %>%
+    dplyr::mutate(obs_index = row_number())
+
+  # fix Z
+  Zb <- Z_df[as.character(obs_map$.obs), , drop = FALSE]
+  Zb$obs_index <- obs_map$obs_index
+  rownames(Zb) <- Zb$obs_index
+
+  # fix X
+  Xb <- X_fixed %>%
+    dplyr::inner_join(obs_map, by = ".obs") %>%
+    dplyr::select(.obs = obs_index, .index, .value)
+
+  # fix Y
+  Yb <- Y_df %>%
+    dplyr::inner_join(obs_map, by = c("obs_index" = ".obs")) %>%
+    dplyr::arrange(obs_index) %>%
+    dplyr::pull(phq4_post)
+
+  # models
+  model_Xb <- pffr(.value ~ phq4_pre, ydata = Xb, data = Zb)
+  resid_Xb <- residuals(model_Xb)
+
+  model_Yb <- tryCatch(
+    gam(Yb ~ s(Zb$phq4_pre)),
+    error = function(e) lm(Yb ~ Zb$phq4_pre)
+  )
+  resid_Yb <- resid(model_Yb)
+
+  ghcm_test(resid_Xb, resid_Yb, X_limits = range(Xb$.index))$p
+}
+```
+
+
+```{r}
+# tryout
+set.seed(123)
+B <- 5
+B <- 100
+system.time({p_values <- map_dbl(1:B, bootstrap_ghcm)})
+
+# save results
+saveRDS(p_values, file.path(save_path, glue::glue("p_values_B{B}.rds")))
+```
+
+```{r}
+# load results
+B <- 100
+p_values_B5 <- readRDS(file.path(save_path, "p_values_B5.rds"))
+p_values_B100 <- readRDS(file.path(save_path, "p_values_B100.rds"))
+
+p_values_B100
+
+# compute statistics
+ci_p <- quantile(p_values_B100, probs = c(0.025, 0.975))
+p_mean <- mean(p_values_B100)
+
+# save summary
+summary_ghcm_boot <- list(
+  mean_p = round(p_mean, 3),
+  ci_lower = round(ci_p[1], 3),
+  ci_upper = round(ci_p[2], 3),
+  B = B
+)
+saveRDS(summary_ghcm_boot, file = file.path(save_path, "ghcm_boot_summary.rds"))
+
+```
+
+
+```{r}
+# plot ECDF
+df_p_2 <- data.frame(p_value = p_values_B100)
+
+plot_ecdf <- ggplot(df_p_2, aes(x = p_value)) +
+  stat_ecdf(geom = "step", linewidth = 1.3, color = "darkorange") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "gray") +
+	labs(x = expression("Bootstrapped "*italic("p")*"-value"), y = "ECDF") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    axis.line = element_blank()
+  )
+print(plot_ecdf)
+ggsave(file.path(save_path, "plot_ecdf.pdf"), plot = plot_ecdf, width = 6, height = 4)
+```

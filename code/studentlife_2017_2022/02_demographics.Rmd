@@ -1,0 +1,208 @@
+---
+title: "studentlife 2025"
+author: ""
+date: "2025-06-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(glue)
+library(xtable)
+library(kableExtra)
+```
+
+## demographics summary
+
+```{r}
+# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Knit ▸ Knit Directory ▸ Project Directory
+
+# set paths
+data_path <- "data/studentlife_2017_2022/archive/Demographics"
+save_path <- "data/studentlife_2017_2022/preprocessed/Demographics"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+
+# read data
+demographics <- read_csv(glue("{data_path}/demographics.csv"))
+```
+
+```{r}
+unique(demographics$race)
+demographics$race
+table(demographics$race)
+```
+
+
+```{r}
+
+# clean + collapse race categories
+demo_clean <- demographics %>%
+  dplyr::mutate(
+    gender = case_when(
+      gender == "F" ~ "Female",
+      gender == "M" ~ "Male",
+      TRUE ~ "Both/Other"
+    ),
+    race = case_when(
+      grepl("^white$", race, ignore.case = TRUE) ~ "White",
+      grepl("^asian$", race, ignore.case = TRUE) ~ "Asian",
+      grepl("^black$", race, ignore.case = TRUE) ~ "Black or African American",
+      grepl("american indian|alaskan", race, ignore.case = TRUE) &
+        !grepl("white", race, ignore.case = TRUE) ~ "American Indian/Alaska Native",
+      grepl("more than one|other/hispanic|american indian/white|alaskan native/white", race, ignore.case = TRUE) ~ "More than one race",
+      TRUE ~ "Not reported"
+    )
+  )
+
+# summarize gender
+gender_summary <- demo_clean %>%
+  count(category = gender) %>%
+  mutate(percentage = round(100 * n / sum(n), 2), Variable = "Sex")
+
+# race levels in preferred order
+race_levels <- c(
+  "White",
+  "Asian",
+  "Black or African American",
+  "American Indian/Alaska Native",
+  "More than one race",
+  "Not reported"
+)
+
+# summarize race and include all defined levels
+race_summary <- demo_clean %>%
+  count(category = race) %>%
+  mutate(percentage = round(100 * n / sum(n), 2), Variable = "Race") %>%
+  mutate(category = factor(category, levels = race_levels)) %>%
+  arrange(category)
+
+# combine
+table1 <- bind_rows(
+  gender_summary %>% arrange(desc(n)),
+  race_summary
+) %>%
+  dplyr::select(Variable, Category = category, n, Percentage = percentage)
+
+# suppress repeated labels
+table1$Variable <- ifelse(duplicated(table1$Variable), "", table1$Variable)
+
+# format %
+table1$Percentage <- paste0(table1$Percentage, "%")
+
+
+# print nicely
+kable(table1, caption = "Participant Demographics (Table 1)")
+
+```
+
+
+
+```{r}
+# clean + collapse race categories
+demo_clean <- demographics %>%
+  dplyr::mutate(
+    gender = case_when(
+      gender == "F" ~ "Female",
+      gender == "M" ~ "Male",
+      TRUE ~ "Both/Other"
+    ),
+    race = case_when(
+      grepl("^white$", race, ignore.case = TRUE) ~ "White",
+      grepl("^asian$", race, ignore.case = TRUE) ~ "Asian",
+      grepl("^black$", race, ignore.case = TRUE) ~ "Black or African American",
+      grepl("american indian|alaskan", race, ignore.case = TRUE) &
+        !grepl("white", race, ignore.case = TRUE) ~ "American Indian/Alaska Native",
+      grepl("more than one|other/hispanic|american indian/white|alaskan native/white", race, ignore.case = TRUE) ~ "More than one race",
+      TRUE ~ "Not reported"
+    )
+  )
+
+# summarize gender
+gender_summary <- demo_clean %>%
+  count(category = gender) %>%
+  mutate(percentage = round(100 * n / sum(n), 1), Variable = "Sex")
+
+# define order of race levels
+race_levels <- c(
+  "White",
+  "Asian",
+  "Black or African American",
+  "American Indian/Alaska Native",
+  "More than one race",
+  "Not reported"
+)
+
+# summarize race
+race_summary <- demo_clean %>%
+  count(category = race) %>%
+  mutate(percentage = round(100 * n / sum(n), 1), Variable = "Race") %>%
+  mutate(category = factor(category, levels = race_levels)) %>%
+  arrange(category)
+
+# combine
+table1 <- bind_rows(
+  gender_summary %>% arrange(desc(n)),
+  race_summary
+) %>%
+  dplyr::select(Variable, Category = category, n, Percentage = percentage)
+
+# suppress repeated labels
+table1$Variable <- ifelse(duplicated(table1$Variable), "", table1$Variable)
+
+# format %
+table1$Percentage <- paste0(table1$Percentage, "%")
+
+# print for html
+knitr::kable(table1, caption = "Participant Demographics (Table 1)", align = "llll")
+
+
+xtable::xtable(
+  table1,
+  caption = "Participant Demographics (Table 1)",
+  align = c("l", "l", "l", "r", "r")
+) |> 
+  print(include.rownames = FALSE)
+
+```
+
+
+```{r}
+n_distinct(demographics$uid)
+
+# save
+saveRDS(demographics, "data/studentlife_2017_2022/preprocessed/Demographics/demographics.rds")
+saveRDS(demographics, file = file.path(save_path, "demographics.rds"))
+
+```
+
+
+```{r}
+# keep only uid + binary-coded gender
+gender_clean <- demographics %>%
+  mutate(
+    gender_binary = case_when(
+      gender == "M" ~ 1,
+      gender == "F" ~ 0,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  dplyr::select(uid, gender_binary) %>%
+  drop_na()
+
+# add .obs from uid_map (this is from the steps script!)
+uid_map <- readRDS("data/studentlife_2017_2022/preprocessed/uid_map.rds")
+
+gender <- gender_clean %>%
+  left_join(uid_map, by = "uid") %>%
+  drop_na() %>%
+  arrange(.obs)
+
+# save for ghcm use
+saveRDS(gender, "data/studentlife_2017_2022/preprocessed/joint/gender.rds")
+
+```
+

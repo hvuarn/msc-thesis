@@ -1,0 +1,606 @@
+---
+title: "34_studentlife_ema"
+author: 
+date: "2025-06-25"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(glue)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(scales)
+library(RColorBrewer)
+library(patchwork)
+library(tidyr)
+library(refund)
+library(ggplot2)
+library(ggdist) # raincloud plot
+```
+
+## EMA: phq-4
+
+```{r}
+# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Knit ▸ Knit Directory ▸ Project Directory
+
+rm(list = ls())
+gc()
+
+# set paths
+data_path <- "data/studentlife_2017_2022/archive/EMA"
+save_path <- "data/studentlife_2017_2022/preprocessed/EMA"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+
+# read data
+ema_raw <- read_csv(glue("{data_path}/general_ema.csv")) %>%
+  dplyr::distinct()  # remove duplicates if any (there are none)
+
+# mapping from steps
+uid_map <- readRDS("data/studentlife_2017_2022/preprocessed/uid_map.rds")
+```
+
+```{r}
+# ema are done weekly
+head(ema_raw)
+table(ema_raw$phq4_score)
+anyNA(ema_raw$phq4_score)
+
+# count obs per uid
+count(ema_raw, uid)
+ema_raw %>% count(uid) %>% arrange(desc(n))  # total
+ema_raw %>% filter(!is.na(phq4_score)) %>% count(uid) %>% arrange(desc(n))  # non-missing
+```
+
+
+```{r}
+ema_filtered <- ema_raw %>%
+  dplyr::filter(!is.na(phq4_score)) %>%
+  mutate(
+    date = ymd(day),
+    phq4_raw = phq4_score  # preserve original (1–12) before normalizing
+  )
+
+# use the time alignment from steps!
+time_range <- readRDS("data/studentlife_2017_2022/preprocessed/sensing/steps_time_range.rds")
+min_day <- time_range$min_day
+max_day <- time_range$max_day
+
+# so ema is between the same min and max days as steps
+ema_normalized <- ema_filtered %>%
+  mutate(time_norm = as.numeric(difftime(date, min_day, units = "days")) /
+                      as.numeric(difftime(max_day, min_day, units = "days")))
+
+
+# normalize phq4 scores to [0, 1]
+min_val <- min(ema_normalized$phq4_score)
+max_val <- max(ema_normalized$phq4_score)
+
+ema_normalized <- ema_normalized %>%
+  mutate(phq4_score = (phq4_score - min_val) / (max_val - min_val))
+```
+
+
+```{r}
+# ema_mapped <- ema_normalized %>%
+#   left_join(uid_map, by = "uid") %>%
+#   filter(!is.na(.obs)) %>%
+#   dplyr::select(.obs, .index = time_norm, .value = phq4_score)
+
+# keeping phq4 raw
+ema_mapped <- ema_normalized %>%
+  left_join(uid_map, by = "uid") %>%
+  filter(!is.na(.obs)) %>%
+  dplyr::select(.obs, .index = time_norm, .value = phq4_score, phq4_raw)
+
+
+ema_mapped %>% count(.obs) %>% arrange(desc(n))
+
+count(ema_mapped, .obs)
+count(ema_mapped, .obs, .value)
+range(ema_mapped$.value)  # should be [0, 1]
+```
+```{r}
+# filter out users with less than 4 observations
+ema_clean <- ema_mapped %>%
+  group_by(.obs) %>%
+  filter(n() >= 4) %>%
+  ungroup()
+
+before <- ema_mapped %>%
+  count(.obs, name = "n") %>%
+  summarize(n_users = n())
+
+after <- ema_clean %>%
+  count(.obs, name = "n") %>%
+  summarize(n_users = n())
+
+glue("Filtered from {before$n_users} to {after$n_users} EMA users with ≥4 observations.")
+
+```
+
+
+
+```{r}
+# plot normalized phq4 scores for a few users
+ema_clean %>%
+  filter(.obs <= 5) %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs), group = .obs)) +
+  geom_line(alpha = 0.7) +
+  geom_point(size = 1) +
+  theme_bw() +
+  labs(
+    title = "normalized phq4 trajectories (first 5 users)",
+    x = "normalized time", y = "phq4 score"
+  ) +
+  guides(color = "none")
+
+```
+
+```{r}
+# plot normalized phq4 scores for a few users
+ema_clean %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs), group = .obs)) +
+  geom_line(alpha = 0.3) +
+  geom_point(size = 0.01) +
+  theme_bw() +
+  labs(
+    title = "PHQ-4 profiles",
+    x = "normalized time", y = "normalized PHQ-4"
+  ) +
+  guides(color = "none")
+
+```
+
+
+
+```{r}
+# get baseline and follow-up per user
+# gives normalized time points (pre and post)
+phq_times <- ema_clean %>%
+  group_by(.obs) %>%
+  arrange(.index) %>%
+  summarize(
+    time_start = first(.index),
+    time_end = last(.index),
+    .groups = "drop"
+  )
+
+phq_times %>%
+	#filter(.obs <= 30) %>%  # limit if too many
+  #ggplot(aes(y = as.factor(.obs))) +  
+  ggplot(aes(y = reorder(factor(.obs), time_start))) +
+  geom_segment(aes(x = time_start, xend = time_end, yend = as.factor(.obs)),
+               color = "darkgrey", size = 0.3) +
+  geom_point(aes(x = time_start), color = "blue", size = 0.6) +
+  geom_point(aes(x = time_end), color = "red", size = 0.3) +
+  theme_bw() +
+  labs(
+    title = "Baseline and follow-up PHQ-4 times",
+    x = "normalized time", y = "user (.obs)"  
+  ) +
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()) 
+```
+
+```{r}
+phq_times %>%
+  ggplot(aes(y = as.factor(.obs))) +  
+  geom_segment(aes(x = time_start, xend = time_end, yend = as.factor(.obs)),
+               color = "darkgrey", size = 0.3) +
+  geom_point(aes(x = time_start), color = "blue", size = 0.6) +
+  geom_point(aes(x = time_end), color = "red", size = 0.6) +
+  theme_bw() +
+  labs(
+    title = "Baseline and follow-up PHQ-4 times",
+    x = "normalized time", y = "user (.obs)"  
+  ) +
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()) 
+
+```
+
+
+
+```{r}
+ema_clean %>%
+  ggplot(aes(x = .index, y = .value, group = .obs, color = .value)) +
+  geom_line(alpha = 0.3) +
+  geom_point(size = 0.5, alpha = 0.6) +
+  scale_color_gradient(low = "blue", high = "red", name = "PHQ-4") +
+  theme_bw() +
+  labs(
+    title = "PHQ-4 profiles across users",
+    x = "normalized time", y = "normalized score"
+  )
+
+```
+
+
+```{r}
+spaghetti <- ema_clean %>%
+  ggplot(aes(x = .index, y = .value, group = .obs)) +
+  geom_line(color = "darkgrey", alpha = 0.1, na.rm = TRUE) +
+  stat_summary(aes(group = 1), fun = mean, geom = "line",
+               color = "red", size = 0.2, linetype = "solid", na.rm = TRUE) +
+  theme_bw() +
+  labs(x = "Normalized time", y = "Normalized PHQ-4"
+  )
+print(spaghetti)
+ggsave(file.path(save_path, "spaghetti.pdf"), plot = spaghetti, width = 7, height = 4)
+```
+
+
+
+```{r}
+ema_clean %>%
+  ggplot(aes(x = .index, y = factor(.obs), color = .value)) +
+  geom_point(size = 0.6, alpha = 0.7) +
+  scale_color_gradientn(
+    colors = rev(brewer.pal(11, "RdYlBu")),
+    name = "PHQ-4"
+  ) +
+  theme_bw() +
+  labs(x = "Normalized time", y = "user (.obs)"
+  ) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+```
+
+
+
+
+```{r}
+# not normalized
+ema_clean %>%
+  mutate(
+    severity = cut(
+      phq4_raw,
+      breaks = c(-1, 2, 5, 8, 12),
+      labels = c("none-minimal", "mild", "moderate", "severe")
+    )
+  ) %>%
+  ggplot(aes(x = .index, y = factor(.obs), color = severity)) +
+  geom_point(size = 0.6, alpha = 0.7) +
+  scale_color_manual(
+    values = rev(brewer.pal(4, "RdYlBu")),
+    name = "PHQ-4 severity"
+  ) +
+  theme_bw() +
+  labs(
+    title = "PHQ-4 measurement times per user",
+    x = "normalized time", y = "user (.obs)"
+  ) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+```
+
+
+
+
+
+
+
+```{r}
+# bin time into 10 intervals
+ema_clean <- ema_clean %>%
+  mutate(time_bin = cut(.index, breaks = 10, include.lowest = TRUE))
+
+# boxplot per binned timepoint
+ggplot(ema_clean, aes(x = time_bin, y = .value)) +
+  geom_boxplot(outlier.size = 0.5, fill = "lightgrey") +
+  theme_bw() +
+  labs(x = "Normalized time (binned)", y = "PHQ-4 score"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+
+
+
+
+```{r}
+head(ema_clean)
+
+hist(ema_clean$.value)
+hist(ema_raw$phq4_score)
+hist(ema_clean$phq4_raw)
+# all the same, good, makes sense!
+```
+
+
+
+
+```{r}
+# load steps data
+steps <- readRDS("data/studentlife_2017_2022/preprocessed/sensing/steps.rds")
+
+# get unique .obs ids in each dataset
+obs_steps <- unique(steps$.obs)
+obs_ema   <- unique(ema_clean$.obs)
+
+# check if all ema students are in steps
+all(obs_ema %in% obs_steps)  # TRUE
+all(obs_steps %in% obs_ema)  # FALSE?
+
+# how many match
+length(intersect(obs_ema, obs_steps)) 
+length(obs_ema)                        # total in ema
+length(obs_steps)                      # total in steps
+
+# filter the ones in steps that are also in ema!
+steps <- steps %>%
+  filter(.obs %in% unique(ema_clean$.obs))
+
+#---------added!
+# truncate steps to between baseline and follow-up PHQ-4
+# steps <- steps %>%
+#   inner_join(phq_times, by = ".obs") %>%
+#   filter(.index >= time_start, .index <= time_end) %>%
+#   dplyr::select(.obs, .index, .value)  
+# 
+
+# truncated to PHQ-4 window
+steps_trunc <- steps %>%
+  inner_join(phq_times, by = ".obs") %>%
+  filter(.index >= time_start, .index <= time_end) %>%
+  dplyr::select(.obs, .index, .value)
+
+glue("Step records: {nrow(steps_trunc)} truncated vs {nrow(steps)} full
+({round(nrow(steps_trunc) / nrow(steps) * 100, 1)}% retained)
+Users: {length(unique(steps_trunc$.obs))} in both versions
+")
+
+#---------
+
+obs_steps <- unique(steps_trunc$.obs)
+length(obs_steps)
+length(obs_ema)
+# check if all ema subjects are in steps
+all(obs_ema %in% obs_steps)  
+all(obs_steps %in% obs_ema)  
+
+summary(ema_clean$.value)
+summary(steps_trunc$.value)
+```
+
+```{r}
+steps_trunc %>%
+  ggplot(aes(x = .index, y = factor(.obs), color = .value)) +
+  geom_point(size = 0.6, alpha = 0.7) +
+  scale_color_gradientn(
+    colors = rev(brewer.pal(11, "RdYlBu")),
+    name = "steps"
+  ) +
+  theme_bw() +
+  labs(
+    title = "Step measurements per user (within PHQ-4 window)",
+    x = "normalized time", y = "user (.obs)"
+  ) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+
+```
+
+
+
+```{r}
+# compute real time span in days or weeks
+phq_times_duration <- phq_times %>%
+  mutate(
+    duration_days = as.numeric((time_end - time_start) * as.numeric(difftime(max_day, min_day, units = "days"))),
+    duration_weeks = duration_days / 7
+  )
+
+phq_times_duration %>%
+  ggplot(aes(x = duration_days / 7)) +
+  geom_histogram(binwidth = 2, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of user study duration",
+    x = "duration (weeks)", y = "number of users"
+  )
+
+phq_times_duration %>%
+  ggplot(aes(x = duration_days / 365)) +
+  geom_histogram(binwidth = 0.1, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of user study duration",
+    x = "duration (years)", y = "number of users"
+  )
+```
+
+
+```{r}
+# save
+save_path <- "data/studentlife_2017_2022/preprocessed/joint"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+
+saveRDS(steps_trunc, "data/studentlife_2017_2022/preprocessed/joint/steps.rds")
+saveRDS(ema_clean, "data/studentlife_2017_2022/preprocessed/joint/ema.rds")
+
+```
+
+
+```{r}
+# replicate plots of anaylsis 1!
+
+# should have columns: .obs, .index, phq4_raw (the 0-12 score)
+# pre/post data frame 
+phq4_wide <- ema_clean %>%
+  group_by(.obs) %>%
+  arrange(.index) %>%
+  summarize(
+    phq4_pre = first(phq4_raw), # Using the raw 0-12 score
+    phq4_post = last(phq4_raw),
+    .groups = "drop"
+  )
+summary(phq4_wide$phq4_pre)
+summary(phq4_wide$phq4_post)
+nrow(phq4_wide)
+#----- boxplots --------- 
+## outcome-based grouping!
+
+# None-to-Minimal (0-2)
+# Mild (3-5)
+# Moderate (6-8)
+# Severe (9-12)
+
+# Define PHQ-4 severity categories
+phq4_breaks <- c(-Inf, 2, 5, 8, 12)
+phq4_labels <- c("None-minimal", "Mild", "Moderate", "Severe")
+
+# prep
+phq4_facet_data <- phq4_wide %>%
+  mutate(
+    phq4_cat_post = cut(phq4_post, breaks = phq4_breaks, labels = phq4_labels)
+  ) %>%
+  pivot_longer(
+    cols = c(phq4_pre, phq4_post),
+    names_to = "timepoint",
+    values_to = "score"
+  ) %>%
+  mutate(
+    timepoint = factor(timepoint, 
+                       levels = c("phq4_pre", "phq4_post"), 
+                       labels = c("Baseline", "Follow-up"))
+  )
+
+# facet boxplot
+phq4_boxplot <- ggplot(phq4_facet_data, aes(x = phq4_cat_post, y = score, fill = phq4_cat_post)) +
+  geom_boxplot(width = 0.6, alpha = 0.7, color = "black", outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.4, size = 1.2) +
+  facet_wrap(~ timepoint) +
+  labs(x = "Severity", y = "PHQ-4") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), legend.position = "none")
+print(phq4_boxplot)
+ggsave(file.path(save_path, "boxplot.pdf"), plot = phq4_boxplot, width = 7, height = 4)
+```
+
+
+```{r}
+#----- raincloud --------- 
+phq4_long <- phq4_wide %>%
+  pivot_longer(cols = c(phq4_pre, phq4_post), names_to = "timepoint", values_to = "score") %>%
+  mutate(timepoint = factor(timepoint, labels = c("Baseline", "Follow-up")))
+
+my_colors <- brewer.pal(3, "Set2")[1:2]
+
+phq4_raincloud <- ggplot(phq4_long, aes(x = timepoint, y = score, fill = timepoint)) +
+  stat_halfeye(adjust = 0.5, width = 0.6, .width = 0, justification = -0.3, point_colour = NA) +
+  geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.5) +
+	geom_point(size = 1.0, alpha = 0.2, position = position_jitter(seed = 1, width = 0.1, height = 0))+
+  geom_line(aes(group = .obs), alpha = 0.1, color = "grey40") +
+  scale_fill_manual(values = my_colors) +
+  coord_cartesian(ylim = c(0, 12)) + 
+  labs(x = "Timepoint", y = "PHQ-4") +
+  theme_bw() +
+  theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.position = "none"
+  )
+
+print(phq4_raincloud)
+```
+
+```{r}
+# prepare data for 1×1 repeated measures (pre vs post)
+df_phq4 <- data_1x1(
+  array_1 = phq4_wide$phq4_pre,
+  array_2 = phq4_wide$phq4_post,
+  jit_distance = 0.09,
+  jit_seed = 123
+)
+
+
+plot_phq4 <- raincloud_1x1_repmes(
+  data = df_phq4,
+  colors = c("dodgerblue", "darkorange"),
+  fills = c("dodgerblue", "darkorange"),
+  line_color = "gray",
+  line_alpha = 0.3,
+  size = 1,
+  alpha = 0.6,
+  align_clouds = FALSE
+) +
+  scale_x_continuous(
+    breaks = c(1, 2),
+    labels = c("Baseline", "Follow-up"),
+    limits = c(0, 3)
+  ) +
+	scale_y_continuous(breaks = c(seq(0, 10, 2.5), 12)) +
+  coord_cartesian(ylim = c(0, 12)) +
+  xlab("Timepoint") +
+  ylab("PHQ-4") +
+  theme_classic()
+print(plot_phq4)
+ggsave(file.path(save_path, "raincloud.pdf"), plot = plot_phq4, width = 7, height = 4)
+```
+
+```{r}
+# xtable
+phq4_breaks <- c(-Inf, 2, 5, 8, 12)
+phq4_labels <- c("None-minimal (0–2)", "Mild (3–5)", "Moderate (6–8)", "Severe (9–12)")
+
+# baseline summary
+baseline_summary <- phq4_wide %>%
+  filter(!is.na(phq4_pre)) %>%
+  mutate(category = cut(phq4_pre, breaks = phq4_breaks, labels = phq4_labels)) %>%
+  count(category) %>%
+  mutate(Baseline = paste0(n, " (", round(n / sum(n) * 100, 1), "%)")) %>%
+  dplyr::select(category, Baseline)
+
+# follow-up summary
+followup_summary <- phq4_wide %>%
+  filter(!is.na(phq4_post)) %>%
+  mutate(category = cut(phq4_post, breaks = phq4_breaks, labels = phq4_labels)) %>%
+  count(category) %>%
+  mutate(`Follow-up` = paste0(n, " (", round(n / sum(n) * 100, 1), "%)")) %>%
+  dplyr::select(category, `Follow-up`)
+
+# join and finalize table
+final_table <- full_join(baseline_summary, followup_summary, by = "category") %>%
+  replace_na(list(Baseline = "-", `Follow-up` = "-"))
+
+n_total <- nrow(phq4_wide)
+n_missing_pre <- sum(is.na(phq4_wide$phq4_pre))
+n_missing_post <- sum(is.na(phq4_wide$phq4_post))
+
+baseline_header <- paste0("Baseline ($n=", n_total - n_missing_pre, ")")
+followup_header <- paste0("Follow-up ($n=", n_total - n_missing_post, ")")
+colnames(final_table) <- c("Severity category", baseline_header, followup_header)
+
+print(
+  xtable(final_table,
+         caption = "Distribution of PHQ-4 severity categories at baseline and follow-up.",
+         label = "tab:phq4_dist_summary",
+         align = c("l", "l", "r", "r")
+  ),
+  caption.placement = "top",
+  include.rownames = FALSE,
+  booktabs = TRUE
+)
+
+
+```
+
+

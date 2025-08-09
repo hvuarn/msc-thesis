@@ -1,0 +1,244 @@
+---
+title: "09_phonelock"
+output: html_document
+date: "2025-07-05"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(glue)
+library(purrr)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(ghcm)
+library(refund)
+library(ggplot2)
+```
+
+## phone use
+
+```{r}
+rm(list = ls())
+gc()
+
+
+# paths
+data_path <- "data/studentlife_2013/raw/dataset/sensing/phonelock"
+save_path <- "data/studentlife_2013/preprocessed/sensing/phoneuse"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+save_plot_path <- file.path(save_path, "plots")
+if (!dir.exists(save_plot_path)) dir.create(save_plot_path, recursive = TRUE)
+
+```
+
+```{r}
+# list files
+file_list <- list.files(data_path, pattern = "phonelock_u.*\\.csv", full.names = TRUE)
+
+# read and parse each file
+read_lock_file <- function(file) {
+	df <- read_csv(file, show_col_types = FALSE)
+  df$uid <- gsub(".*phonelock_(u[0-9]+)\\.csv", "\\1", basename(file))
+  df <- df %>%
+    mutate(
+      start_time = as.POSIXct(start, origin = "1970-01-01", tz = "UTC"),
+      end_time = as.POSIXct(end, origin = "1970-01-01", tz = "UTC"),
+      duration = as.numeric(difftime(end_time, start_time, units = "mins")),
+      day = as.Date(start_time)
+    )
+  return(df)
+}
+
+# combine all users
+phonelock_raw <- purrr::map_dfr(file_list, read_lock_file)
+
+```
+
+
+```{r}
+# sanity checks
+summary(phonelock_raw$duration)
+
+# normalize time globally
+time_bounds <- readRDS("data/studentlife_2013/preprocessed/sensing/activity/time_bounds.rds")
+min_time <- time_bounds$min_time
+max_time <- time_bounds$max_time
+
+phonelock_raw <- phonelock_raw %>%
+  mutate(
+    time_norm = (as.numeric(start_time) - as.numeric(min_time)) /
+                (as.numeric(max_time) - as.numeric(min_time))
+  )
+
+# map uid → .obs
+uid_map <- readRDS("data/studentlife_2013/preprocessed/sensing/activity/uid_map.rds")
+
+phonelock_raw <- phonelock_raw %>%
+  left_join(uid_map, by = "uid")
+
+
+# plot raw durations (before normalization)
+phonelock_raw %>%
+  ggplot(aes(x = time_norm, y = duration, color = factor(.obs))) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  theme_bw() +
+  labs(
+    title = "raw phonelock durations (pre-normalization)",
+    x = "normalized time", y = "duration (minutes)"
+  ) +
+  guides(color = "none")
+
+hist(phonelock_raw$duration, breaks = 100, main = "duration histogram", xlab = "minutes")
+boxplot(phonelock_raw$duration, main = "boxplot of phonelock")
+summary(phonelock_raw$duration)
+
+q1 <- quantile(phonelock_raw$duration, 0.25)
+q3 <- quantile(phonelock_raw$duration, 0.75)
+iqr <- q3 - q1
+upper_bound <- q3 + 1.5 * iqr
+
+phonelock_filtered <- phonelock_raw %>%
+  filter(duration <= upper_bound)
+
+# summary before/after
+n_all <- nrow(phonelock_raw)
+n_filtered <- nrow(phonelock_filtered)
+pct_filtered <- 100 * (n_all - n_filtered) / n_all
+glue::glue("filtered {n_all - n_filtered} of {n_all} unlocks ({round(pct_filtered, 2)}%)")
+
+users_before <- phonelock_raw %>% distinct(uid)
+users_after <- phonelock_filtered %>% distinct(uid)
+users_lost <- setdiff(users_before$uid, users_after$uid)
+n_lost <- length(users_lost)
+
+glue::glue("number of users removed entirely: {n_lost} / {nrow(users_before)}")
+```
+
+
+```{r}
+# plot raw durations (before normalization)
+phonelock_filtered %>%
+  ggplot(aes(x = time_norm, y = duration, color = factor(.obs))) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Phone lock duration"
+  ) +
+  guides(color = "none")
+```
+
+```{r}
+# compute global min and max
+min_val <- min(phonelock_filtered$duration, na.rm = TRUE)
+max_val <- max(phonelock_filtered$duration, na.rm = TRUE)
+
+# normalize globally (between subject)
+phonelock_clean <- phonelock_filtered %>%
+  mutate(.value = (duration - min_val) / (max_val - min_val)) %>%
+  transmute(.obs, .index = time_norm, .value)
+
+# plot first 5
+plot_01 <- phonelock_clean %>%
+  filter(.obs <= 5) %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs))) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized phone lock duration"
+  ) +
+  guides(color = "none")
+print(plot_01)
+ggsave(file.path(save_plot_path, "plot_01.pdf"), plot = plot_01, width = 7, height = 4)
+
+```
+```{r}
+# plot all users
+plot_02 <- phonelock_clean %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs))) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 0.3) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized phone lock duration"
+  ) +
+  guides(color = "none")
+print(plot_02)
+ggsave(file.path(save_plot_path, "plot_02.pdf"), plot = plot_02, width = 7, height = 4)
+
+
+```
+
+
+```{r}
+# plot per user with facet_wrap
+plot_03 <- phonelock_clean %>%
+  ggplot(aes(x = .index, y = .value)) +
+  geom_line(color = "steelblue", alpha = 0.6) +
+  facet_wrap(~ .obs, scales = "fixed", ncol=7) +
+  theme_bw() +
+  labs(
+    x = "Normalized time",
+    y = "Normalized phone lock duration"
+  ) +
+  theme(
+    strip.text = element_text(size = 6),
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  )
+print(plot_03)
+ggsave(file.path(save_plot_path, "plot_03.pdf"), plot = plot_03)
+
+```
+
+
+```{r}
+# Filter
+# load list of the 38 final participants
+final_participants <- readRDS("data/studentlife_2013/preprocessed/joint/overview_complete.rds")
+
+# only keep those that had phq9 measurement 
+phonelock_clean_filtered <- phonelock_clean %>%
+  filter(.obs %in% final_participants$.obs)
+  
+# new clean ID for plot: `plot_id` from 1 to 38
+phonelock_for_plot <- phonelock_clean_filtered %>%
+  mutate(plot_id = as.integer(factor(.obs)))
+
+plot_04 <- ggplot(phonelock_for_plot, aes(x = .index, y = .value)) +
+  geom_line(color = "steelblue", alpha = 0.6) +
+  facet_wrap(~ plot_id, scales = "fixed", ncol=7) +
+  theme_bw() +
+	theme(
+    #aspect.ratio = 0.6,   # squish the facet height
+    strip.text = element_text(size = 6),
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  ) +
+  labs(
+    x = "Normalized time", 
+    y = "Normalized phone lock duration"
+  )
+
+print(plot_04)
+ggsave(file.path(save_plot_path, "plot_04.pdf"), plot = plot_04)
+```
+
+
+
+```{r}
+# save
+write.csv(phonelock_clean, file.path(save_path, "phonelock_clean.csv"), row.names = FALSE)
+saveRDS(phonelock_clean, file.path(save_path, "phonelock_clean.rds"))
+saveRDS(phonelock_clean_filtered, file.path(save_path, "phonelock_clean_filtered.rds"))
+
+```
+
+
+```
+
+

@@ -1,0 +1,445 @@
+---
+title: "06_convo"
+date: "2025-07-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(glue)
+library(purrr)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(ghcm)
+library(refund)
+library(ggplot2)
+```
+
+# ghcm
+
+
+```{r}
+rm(list = ls())
+gc()
+
+# conversation frequency: user is around conversation
+# number of independent conversations and their duration.
+# Following Wang et al. 2014: We consider the frequency and duration of conversations around a participant as a measure of sociability.
+
+# paths
+data_path <- "data/studentlife_2013/raw/dataset/sensing/conversation"
+save_path <- "data/studentlife_2013/preprocessed/sensing/convo"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+save_plot_path <- file.path(save_path, "plots")
+if (!dir.exists(save_plot_path)) dir.create(save_plot_path, recursive = TRUE)
+
+# load all conversation csvs
+file_list <- list.files(path = data_path, pattern = "conversation_u.*\\.csv", full.names = TRUE)
+
+# process one file
+process_file <- function(file_path) {
+  df <- read_csv(file_path, show_col_types = FALSE)
+  colnames(df) <- c("start_timestamp", "end_timestamp")
+  df$uid <- gsub(".*conversation_(u[0-9]+)\\.csv", "\\1", basename(file_path))
+  df$start_time <- as.POSIXct(df$start_timestamp, origin = "1970-01-01", tz = "UTC")
+  df$end_time <- as.POSIXct(df$end_timestamp, origin = "1970-01-01", tz = "UTC")
+  df$duration <- as.numeric(difftime(df$end_time, df$start_time, units = "mins"))
+  df$day <- as.Date(df$start_time)
+  return(df)
+}
+
+# apply to all files
+read_csv(file_list[1])
+print(file_list)
+
+#convo_u00 <- read.csv(file.path(data_path, "conversation_u00.csv"))
+#colnames(convo_u00)
+
+convo_raw <- map_dfr(file_list, process_file)
+colnames(convo_raw)
+```
+
+
+
+```{r}
+# Wang et al. 2014: We extend our conservation pipeline in the cloud to remove conversations associated with lectures and x-hours.
+# We use student location to determine if they attend lectures and automatically remove the conversation data correspondingly...
+# class meetings outside of lecutres?? 
+library(jsonlite)
+# read json
+json_path <- "data/studentlife_2013/raw/dataset/education/class_info.json"
+class_json <- fromJSON(json_path)
+
+# flatten each course into rows
+class_df <- map_dfr(
+  names(class_json),
+  function(course) {
+    data.frame(
+      course = course,
+      location = class_json[[course]]$location,
+      jsonlite::flatten(class_json[[course]]$periods)
+    )
+  }
+)
+
+head(class_df, n = Inf)
+
+day_map <- c("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+class_df <- class_df %>%
+  dplyr::mutate(
+    day_label = factor(day_map[day], levels = day_map)
+  )
+
+library(hms)
+
+class_df <- class_df %>%
+  dplyr::mutate(
+    start_hms = as_hms(paste0(start, ":00")),
+    end_hms = as_hms(paste0(end, ":00"))
+  )
+
+```
+
+```{r}
+# filtering 1: based on class schedule
+
+# add weekday and time of day columns to convo_raw
+colnames(class_df)
+class_df <- class_df %>%
+  rename(class_start_hms = start_hms, class_end_hms = end_hms)
+
+convo_raw <- convo_raw %>%
+  dplyr::mutate(
+    weekday = weekdays(day) |> tolower(),
+    start_hms = as_hms(format(start_time, "%H:%M:%S")),
+    end_hms = as_hms(format(end_time, "%H:%M:%S"))
+  )
+convo_raw <- convo_raw %>%
+  mutate(
+    weekday = tolower(format(day, "%a"))  # abbreviated weekday name, lowercase
+  )
+
+colnames(convo_raw)
+
+table(convo_raw$weekday)
+levels(class_df$day_label)
+
+# joining
+joined_df <- convo_raw %>%
+  left_join(class_df, by = c("weekday" = "day_label"))
+
+# mark rows where overlap happens
+joined_df <- joined_df %>%
+  mutate(overlap = start_hms < class_end_hms & end_hms > class_start_hms)
+
+overlap_flag <- joined_df %>%
+  group_by(start_timestamp, end_timestamp, uid, start_time, end_time, duration, day = day.x) %>%
+  summarize(any_overlap = any(overlap), .groups = "drop")
+
+convo_filtered <- overlap_flag %>%
+  filter(!any_overlap)
+
+head(class_df)
+head(convo_raw)
+head(joined_df)
+head(overlap_flag)
+
+summary(joined_df$duration[joined_df$overlap == TRUE])
+which(joined_df$overlap== TRUE)
+
+hist(joined_df$duration[joined_df$overlap == TRUE])
+
+hist(joined_df$duration[joined_df$overlap == TRUE & joined_df$duration <= 100],
+     main = "Histogram of conversation duration during class",
+     xlab = "Duration (minutes)",
+     breaks = 100) 
+```
+
+```{r}
+# just for documentation
+# total conversations before filtering
+total_convos <- nrow(joined_df)
+
+# how many overlap (filtered out)
+total_overlap <- sum(joined_df$overlap, na.rm = TRUE)
+
+# how many per user (filtered out)
+per_user_overlap <- joined_df %>%
+  filter(overlap) %>%
+  group_by(uid) %>%
+  summarise(overlap_count = n()) %>%
+  arrange(desc(overlap_count))
+
+# how many per user (total)
+per_user_total <- joined_df %>%
+  group_by(uid) %>%
+  summarise(total_count = n())
+
+# combine both to see proportions
+per_user_summary <- per_user_total %>%
+  left_join(per_user_overlap, by = "uid") %>%
+  mutate(overlap_count = ifelse(is.na(overlap_count), 0, overlap_count),
+         prop_filtered = overlap_count / total_count)
+per_user_summary
+
+# percentage
+per_user_summary <- per_user_summary %>%
+  mutate(
+    pct_filtered = 100 * prop_filtered
+  )
+
+print(glue::glue("total conversations: {total_convos}"))
+print(glue::glue("total filtered out by overlap: {total_overlap} ({round(100 * total_overlap / total_convos, 2)}%)"))
+
+# show the per user table with percentage
+per_user_summary %>%
+  dplyr::select(uid, total_count, overlap_count, pct_filtered) %>%
+  arrange(desc(pct_filtered))
+```
+
+
+
+```{r}
+# filtering 2: based on outliers
+
+# daily sums
+convo_daily <- convo_filtered %>%
+  group_by(uid, day) %>%
+  summarize(conv_minutes = sum(duration, na.rm = TRUE), .groups = "drop")
+
+range(convo_daily$conv_minutes)
+summary(convo_daily$conv_minutes)
+boxplot(convo_daily$conv_minutes, main = "daily convo minutes before filtering")
+
+# filtering
+q1 <- quantile(convo_daily$conv_minutes, 0.25)
+q3 <- quantile(convo_daily$conv_minutes, 0.75)
+iqr <- q3 - q1
+upper_bound <- q3 + 1.5 * iqr
+
+convo_daily_filtered <- convo_daily %>%
+  filter(conv_minutes <= upper_bound)
+
+print(glue::glue("daily convo records before filtering: {nrow(convo_daily)}"))
+print(glue::glue("daily convo records after filtering outliers: {nrow(convo_daily_filtered)}"))
+
+summary(convo_daily_filtered$conv_minutes)
+boxplot(convo_daily_filtered$conv_minutes, main = "daily convo minutes after filtering")
+```
+
+
+```{r}
+# normalize time using same bounds as activity
+time_bounds <- readRDS("data/studentlife_2013/preprocessed/sensing/activity/time_bounds.rds")
+min_time <- time_bounds$min_time
+max_time <- time_bounds$max_time
+
+convo_daily_filtered <- convo_daily_filtered %>%
+  mutate(time_norm = (as.numeric(as.POSIXct(day)) - as.numeric(min_time)) /
+                     (as.numeric(max_time) - as.numeric(min_time)))
+
+# use existing uid → .obs mapping
+uid_map <- readRDS("data/studentlife_2013/preprocessed/sensing/activity/uid_map.rds")
+
+# response normalization (between-subject)
+min_val <- min(convo_daily_filtered$conv_minutes, na.rm = TRUE)
+max_val <- max(convo_daily_filtered$conv_minutes, na.rm = TRUE)
+
+convo_clean <- convo_daily_filtered %>%
+  left_join(uid_map, by = "uid") %>%
+  mutate(.value = (conv_minutes - min_val) / (max_val - min_val)) %>%
+  transmute(.obs, .index = time_norm, .value)
+
+```
+
+
+
+```{r}
+# plot 
+convo_daily_filtered %>%
+  left_join(uid_map, by = "uid") %>%
+  ggplot(aes(x = time_norm, y = conv_minutes, color = factor(.obs), group = .obs)) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Conversation minutes"
+  ) +
+  guides(color = "none")
+
+```
+
+
+
+```{r}
+# plot normalized convo for first 5 users
+plot_01 <- convo_clean %>%
+  filter(.obs <= 5) %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs), group = .obs)) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized conversation duration"
+  ) +
+  guides(color = "none")
+print(plot_01)
+ggsave(file.path(save_plot_path, "plot_01.pdf"), plot = plot_01, width = 7, height = 4)
+```
+
+```{r}
+# plot normalized convo for all
+plot_02 <- convo_clean %>%
+  ggplot(aes(x = .index, y = .value, color = factor(.obs), group = .obs)) +
+  geom_line(alpha = 0.4) +
+  geom_point(size = 0.3) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized conversation duration"
+  ) +
+  guides(color = "none")
+print(plot_02)
+ggsave(file.path(save_plot_path, "plot_02.pdf"), plot = plot_02, width = 7, height = 4)
+```
+
+
+```{r}
+# sampled daily conversation profiles
+
+set.seed(42)
+plot_04 <- convo_clean %>%
+  dplyr::distinct(.obs) %>%
+  dplyr::sample_n(10) %>%
+  dplyr::left_join(convo_clean, by = ".obs") %>%
+  ggplot(aes(x = .index, y = .value, group = .obs, color = factor(.obs))) +
+	geom_line(alpha = 0.4) +
+  geom_point(size = 0.5) +
+  theme_bw() +
+  labs(
+    x = "Normalized time", y = "Normalized conversation duration"
+  ) +
+  guides(color = "none")
+
+print(plot_04)
+ggsave(file.path(save_plot_path, "plot_04.pdf"), plot = plot_04, width = 7, height = 4)
+
+```
+
+
+
+```{r}
+plot_03 <- convo_clean %>%
+  ggplot(aes(x = .index, y = .value)) +
+  geom_line(color = "steelblue", alpha = 0.6) +
+  facet_wrap(~ .obs, scales = "fixed", ncol = 7) +
+  theme_bw() +
+  theme(
+    #aspect.ratio = 0.6,   # squish the facet height
+    strip.text = element_text(size = 6),
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+  ) +
+  labs(
+    x = "Normalized time",
+    y = "Normalized phone lock duration"
+  )
+print(plot_03)
+ggsave(file.path(save_plot_path, "plot_03.pdf"), plot = plot_03)
+```
+
+```{r}
+# Filter
+# load list of the 38 final participants
+final_participants <- readRDS("data/studentlife_2013/preprocessed/joint/overview_complete.rds")
+
+# only keep those that had phq9 measurement 
+convo_clean_filtered <- convo_clean %>%
+  filter(.obs %in% final_participants$.obs)
+
+# new clean ID for plot: `plot_id` from 1 to 38
+convo_for_plot <- convo_clean_filtered %>%
+  mutate(plot_id = as.integer(factor(.obs)))
+
+plot_05 <- ggplot(convo_for_plot, aes(x = .index, y = .value)) +
+  geom_line(color = "steelblue", alpha = 0.6) +
+  facet_wrap(~ plot_id, scales = "fixed", ncol=7) + 
+  theme_bw() +
+	theme(
+		strip.text = element_text(size = 6),
+    axis.text.x = element_text(size = 5),
+    axis.text.y = element_text(size = 5)
+	) +
+  labs(
+    x = "Normalized time", 
+    y = "Normalized conversation duration"
+  )
+
+
+print(plot_05)
+ggsave(file.path(save_plot_path, "plot_05.pdf"), plot = plot_05)
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+library(fdapace)
+library(plotly)  # for interactive 3D plots
+# convert convo_clean into FDAPace format
+convo_fdapace <- convo_clean %>%
+  group_by(.obs) %>%
+  summarise(
+    .index = list(.index),
+    .value = list(.value),
+    .groups = "drop"
+  )
+
+# rename for FPCA
+Lt <- convo_fdapace$.index  # list of time points per subject
+Ly <- convo_fdapace$.value  # list of convo values per subject
+res_fpca <- FPCA(Ly, Lt, list(dataType = 'Dense', kernel = 'epan', verbose = TRUE))
+
+
+```
+
+```{r}
+# 1. Design plot, mean, scree, eigenfunctions
+plot(res_fpca)
+
+# 2. Path plot for first 2 users
+CreatePathPlot(res_fpca, subset = 1:2, main = 'estimated paths (first 2 users)')
+
+# 3. Covariance surface
+covS <- GetCovSurface(Ly, Lt)
+plot_ly(
+  x = covS$workGrid,
+  y = covS$workGrid,
+  z = ~covS$cov
+) %>% add_surface()
+
+# 4. Mode of variation
+CreateModeOfVarPlot(res_fpca, main = "modes of variation")
+
+```
+
+
+```{r}
+# save
+write.csv(convo_clean, file.path(save_path, "convo_clean.csv"), row.names = FALSE)
+saveRDS(convo_clean, file.path(save_path, "convo_clean.rds"))
+```
+
+
+
+
+

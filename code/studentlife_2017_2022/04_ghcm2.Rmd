@@ -1,0 +1,287 @@
+---
+title: ""
+author: ""
+date: "2025-06-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(glue)
+library(xtable)
+library(kableExtra)
+library(lubridate)
+library(ghcm)
+library(refund)
+```
+
+# ghcm: functional phq4 indep of steps given gender
+
+```{r}
+# Note: Make sure that Knit Directory is set to Project Directory (not Document Directory) in RStudio:
+# Knit ▸ Knit Directory ▸ Project Directory
+
+rm(list = ls())
+gc()
+
+# paths
+joint_path <- "data/studentlife_2017_2022/preprocessed/joint"
+
+save_path <- "data/studentlife_2017_2022/preprocessed/results/analysis_04"
+if (!dir.exists(save_path)) dir.create(save_path, recursive = TRUE)
+
+# load data
+X <- readRDS(file.path(joint_path, "steps.rds"))       # functional predictor
+Y <- readRDS(file.path(joint_path, "ema.rds"))         # functional response
+Z <- readRDS(file.path(joint_path, "gender.rds"))      # scalar confounder
+
+# check .obs match
+#stopifnot(setequal(X$.obs, Y$.obs), setequal(Y$.obs, Z$.obs))
+
+head(X)
+head(Y)
+head(Z)
+```
+
+
+
+```{r}
+# define common .obs
+common_obs <- Reduce(intersect, list(unique(X$.obs), unique(Y$.obs), unique(Z$.obs)))
+
+
+# filter all datasets to common users
+X <- X %>% filter(.obs %in% common_obs)
+Y <- Y %>% filter(.obs %in% common_obs)
+Z <- Z %>% filter(.obs %in% common_obs)
+
+# transform Z to desired format
+Z <- Z %>%
+  dplyr::select(.obs, .value = gender_binary)
+
+```
+
+
+
+```{r}
+# ghcm 
+obs_map <- data.frame(.obs = sort(common_obs)) %>%
+  mutate(obs_index = row_number())
+
+# .obs needs to be integers!
+X_fixed <- X %>%
+  inner_join(obs_map, by = ".obs") %>%
+  dplyr::select(.obs = obs_index, .index, .value)
+
+Y_fixed <- Y %>%
+  inner_join(obs_map, by = ".obs") %>%
+  dplyr::select(.obs = obs_index, .index, .value)
+
+```
+
+```{r}
+# dataframe for Z and wide 
+# pffr() expects scalar covariates as columns in a data frame! so i can have more! one row per id!
+Z_fixed <- Z %>%
+  inner_join(obs_map, by = ".obs") %>%
+  arrange(obs_index) %>%
+  dplyr::select(obs_index, gender = .value)
+
+Z_df <- as.data.frame(Z_fixed)
+rownames(Z_df) <- Z_df$obs_index
+Z_df$gender <- as.factor(Z_df$gender)
+```
+
+
+```{r}
+# function on scalar: steps on gender
+model_X <- pffr(
+  .value ~ gender,
+  ydata = X_fixed,
+  data = Z_df)
+resid_X <- residuals(model_X)
+
+```
+
+
+```{r}
+# function on scalar: phq4 on gender
+model_Y <- pffr(
+  .value ~ gender,
+  ydata = Y_fixed,
+  data = Z_df)
+resid_Y <- residuals(model_Y)
+
+
+```
+
+
+```{r}
+summary(model_X)
+plot(model_X)
+```
+
+```{r}
+# pffr plot 
+pdf(file.path(save_path, "pffr_plot.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))
+plot(model_X, pages = 0)
+dev.off()
+```
+
+```{r}
+# pffr check
+pdf(file.path(save_path, "pffr_check.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))
+pffr.check(model_X)
+dev.off()
+```
+
+```{r}
+summary(model_Y)
+plot(model_Y)
+```
+
+
+```{r}
+# pffr plot 
+pdf(file.path(save_path, "pffr_plot_Y.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))
+plot(model_Y, pages = 0)
+dev.off()
+```
+
+
+```{r}
+# pffr check
+pdf(file.path(save_path, "pffr_check_Y.pdf"), width = 7, height = 5)
+par(mfrow = c(2, 2))
+pffr.check(model_Y)
+dev.off()
+```
+
+
+
+
+
+
+
+```{r}
+X_limits <- range(X_fixed$.index)
+Y_limits <- range(Y_fixed$.index)
+
+# run ghcm test
+ghcm_result <- ghcm_test(
+  resid_X,
+  resid_Y,
+  X_limits = X_limits,
+  Y_limits = Y_limits
+)
+
+print.default(ghcm_result) # test statitic not valid?
+saveRDS(ghcm_result, file = file.path(save_path, "ghcm_result.rds"))
+ghcm_summary <- list( 
+	test_statistic = round(ghcm_result$test_statistic, 3),
+	p_value = round(ghcm_result$p, 3),
+	alpha = ghcm_result$alpha,
+	reject = ghcm_result$reject
+)
+saveRDS(ghcm_summary, file = file.path(save_path, "ghcm_summary.rds"))
+```
+
+We cannot reject the null. The evidence suggests that steps does not explain anything in depression beyond what gender does. 
+
+
+
+
+
+```{r}
+bootstrap_ghcm_gender <- function(i) {
+  obs_ids <- sample(seq_len(nrow(Z_df)), replace = TRUE)
+  sampled_obs <- as.integer(rownames(Z_df)[obs_ids])
+
+  # create new obs map
+  obs_map_b <- data.frame(.obs = sampled_obs) %>%
+    distinct(.obs, .keep_all = TRUE) %>%
+    mutate(obs_index = row_number())
+
+  # Z
+  Zb <- Z_df[as.character(obs_map_b$.obs), , drop = FALSE]
+  Zb$obs_index <- obs_map_b$obs_index
+  rownames(Zb) <- Zb$obs_index
+
+  # X
+  Xb <- X_fixed %>%
+    inner_join(obs_map_b, by = ".obs") %>%
+    dplyr::select(.obs = obs_index, .index, .value)
+
+  # Y
+  Yb <- Y_fixed %>%
+    inner_join(obs_map_b, by = ".obs") %>%
+    dplyr::select(.obs = obs_index, .index, .value)
+
+  # refit
+  model_Xb <- pffr(.value ~ gender, ydata = Xb, data = Zb)
+  model_Yb <- pffr(.value ~ gender, ydata = Yb, data = Zb)
+
+  resid_Xb <- residuals(model_Xb)
+  resid_Yb <- residuals(model_Yb)
+
+  # ghcm test
+  ghcm_test(resid_Xb, resid_Yb, X_limits = range(Xb$.index), Y_limits = range(Yb$.index))$p
+}
+
+```
+
+
+```{r}
+set.seed(123)
+plan(multisession)
+B <- 100
+p_values <- map_dbl(1:B, bootstrap_ghcm_gender)
+
+# save
+saveRDS(p_values, file.path(save_path, glue::glue("ghcm_p_values_B{B}.rds")))
+
+```
+
+
+
+```{r}
+ci_p <- quantile(p_values, probs = c(0.025, 0.975))
+p_mean <- mean(p_values)
+
+summary_ghcm_boot <- list(
+  mean_p = round(p_mean, 3),
+  ci_lower = round(ci_p[1], 3),
+  ci_upper = round(ci_p[2], 3),
+  B = B
+)
+saveRDS(summary_ghcm_boot, file = file.path(save_path, "ghcm_boot_summary.rds"))
+
+```
+
+
+```{r}
+p_values <- readRDS(file.path(save_path, "ghcm_p_values_B100.rds"))
+
+df_p <- data.frame(p_value = p_values)
+
+plot_ecdf <- ggplot(df_p, aes(x = p_value)) +
+  stat_ecdf(geom = "step", linewidth = 1.3, color = "darkorange") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "gray") +
+	labs(x = expression("Bootstrapped "*italic("p")*"-value"), y = "ECDF") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+    axis.line = element_blank()
+  )
+print(plot_ecdf)
+ggsave(file.path(save_path, "plot_ecdf.pdf"), plot = plot_ecdf, width = 6, height = 4)
+
+```
+
