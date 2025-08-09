@@ -45,9 +45,11 @@ The raw datasets are **publicly available** but **not included** in this reposit
         └── ... (raw files from StudentLife 2017-2022)
     ```
 
-3.	**Run the scripts:** To reproduce the analysis: 
-    * Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
-    * Run the scripts in sequence.
+3. **Run the scripts:** To reproduce the analysis:  
+   * **Recommended:** Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).  
+     This automatically sets the correct working directory, such that all relative paths in the scripts work as intended.  
+     The analysis scripts are in the `code/` folder, organized into subdirectories for each dataset.  
+   * Run the scripts in sequence. For the specific execution order, see the **`README.md`** file in `studentlife_2013` and `studentlife_2017_2022`.
 
 ---
 
