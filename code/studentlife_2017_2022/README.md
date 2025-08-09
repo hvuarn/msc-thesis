@@ -1,4 +1,4 @@
-# R code – StudentLife 2017-2022
+# StudentLife 2017--2022
 
 This analysis investigates the relationship between daily step counts and mental health (PHQ-4) over a longer period.
 
