@@ -31,8 +31,8 @@ The raw datasets are **publicly available** but **not included** in this reposit
   
   
 2.  **Organize the data folders:** Inside the project root, create a new folder named `data` with the following strucutre:
-    *Place the unzipped StudentLife 2013 dataset into `data/studentlife_2013/raw/`.
-    *Place the unzipped StudentLife 2017--2022 dataset into `data/studentlife_2017_2022/`.
+    * Place the unzipped StudentLife 2013 dataset into `data/studentlife_2013/raw/`.
+    * Place the unzipped StudentLife 2017--2022 dataset into `data/studentlife_2017_2022/`.
     
     The final structure should look like this:
 
@@ -46,8 +46,8 @@ The raw datasets are **publicly available** but **not included** in this reposit
     ```
 
 3.	**Run the scripts:**
-		*Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
-		*Run the scripts. 
+		* Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
+		* Run the scripts. 
 
 ---
 
