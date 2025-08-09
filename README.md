@@ -11,8 +11,8 @@ This repository contains the R code for **data preprocessing, analysis, and visu
 Mobile sensing has become increasingly popular for studying depression with objective, real-world data. However, much of the existing literature focuses on marginal associations without controlling for measured confounding. This thesis addresses that gap by testing whether passively sensed **physical activity** influences follow-up depression after controlling for **baseline depression** and other relevant covariates.
 
 We applied a novel framework combining **sparse functional data analysis (FDA)** with the **Generalised Hilbertian Covariance Measure (GHCM)** to two longitudinal datasets from Dartmouth College:  
-- *StudentLife 2013* ($N=38$)  
-- *StudentLife 2017–2022* ($N=196$)  
+- *StudentLife 2013 (N=38)*
+- *StudentLife 2017–2022 (N=196)*
 
 Four analyses were conducted, operationalizing physical activity as **daily active minutes** or **step counts**, and adjusting for baseline depression, concurrent behaviors (conversation duration, phone lock duration), and gender. A bootstrap procedure was used to quantify the uncertainty of the resulting $p$-values of the GHCM tests.
 
