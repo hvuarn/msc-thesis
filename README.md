@@ -1,7 +1,6 @@
 # Toward causality in mobile sensing for depression: Modeling time-varying behavior with functional data
 
-This repository contains all the R code used for **data preprocessing, analysis, and visualization** for my master's thesis.  
-The code analysis is divided into two main parts for the publicly available datasets that we use. 
+This repository contains all the R code used for **data preprocessing, analysis, and visualization** for my master's thesis. The code analysis is divided into two main parts for the publicly available datasets that we use. 
 
 Of the three *StudentLife* studies, we use the two publicly available datasets:  
 - the original *StudentLife* study ([Wang et al., 2014](#references)), referred to as **StudentLife 2013**  
@@ -52,11 +51,10 @@ The raw datasets are publicly available and are not included in this repository.
     ```
 
 3. **Run the scripts:**  
-   The scripts are designed to be run in sequence, and they will automatically read the data from the specified folders.  
-   You can run them either via RStudio or from the R console.
-   ▶ open the R project:
-  - open `msc-thesis-public.Rproj` in RStudio (located in the root folder)
-
+  
+### 3. Run the scripts
+- Open the R project file `msc-thesis-public.Rproj` in RStudio (located in the root folder).
+- Run the scripts. 
 
 
 ## References
